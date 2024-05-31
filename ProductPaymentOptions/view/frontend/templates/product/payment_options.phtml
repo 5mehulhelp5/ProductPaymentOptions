@@ -1,0 +1,16 @@
+<?php
+$paymentOptions = $block->getProductPaymentOptions();
+if ($paymentOptions):
+    ?>
+    <div class="payment-options">
+        <h3><?php echo __('Payment Options'); ?></h3>
+        <ul>
+            <?php foreach ($paymentOptions as $option):  ?>
+                <li>
+                    <strong><?php echo $option['payment_method']; ?>:</strong>
+                    <?php echo $option['payment_method_content']; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
