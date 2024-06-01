@@ -1,20 +1,43 @@
 <?php
+/**
+ * Fineweb_ProductPaymentOptions extension
+ *
+ * @category    Fineweb
+ * @package     Fineweb_ProductPaymentOptions
+ * @copyright   Copyright © Fineweb, Inc. All rights reserved.
+ * @author      Roni Clei Santos
+ */
+
 declare(strict_types=1);
 
 namespace Fineweb\ProductPaymentOptions\Block\Adminhtml\Form\Field;
 
-
+use Magento\Framework\View\Element\Context;
 use Magento\Framework\View\Element\Html\Select;
 use Fineweb\ProductPaymentOptions\Model\Config\Source\PaymentMethods;
 
-class TaxColumn extends Select
+/**
+ * Class Column
+ * @package Fineweb\ProductPaymentOptions\Block\Adminhtml\Form\Field
+ * @method setName(string $value)
+ */
+class Column extends Select
 {
 
-    protected $finewebPaymentOptions;
+    /**
+     * @var PaymentMethods
+     */
+    protected PaymentMethods $finewebPaymentOptions;
 
+    /**
+     * Column constructor.
+     * @param PaymentMethods $finewebPaymentOptions
+     * @param Context $context
+     * @param array $data
+     */
     public function __construct(
         PaymentMethods $finewebPaymentOptions,
-        \Magento\Framework\View\Element\Context $context,
+        Context $context,
         array $data = []
     ) {
         $this->finewebPaymentOptions = $finewebPaymentOptions;
@@ -22,23 +45,23 @@ class TaxColumn extends Select
     }
 
     /**
-     * Set "name" for <select> element
+     * Set input name
      *
      * @param string $value
      * @return $this
      */
-    public function setInputName($value)
+    public function setInputName(string $value): static
     {
         return $this->setName($value);
     }
 
     /**
-     * Set "id" for <select> element
+     * Set input ID
      *
-     * @param $value
+     * @param string $value
      * @return $this
      */
-    public function setInputId($value)
+    public function setInputId(string $value): static
     {
         return $this->setId($value);
     }
@@ -48,7 +71,7 @@ class TaxColumn extends Select
      *
      * @return string
      */
-    public function _toHtml(): string
+    protected function _toHtml(): string
     {
         if (!$this->getOptions()) {
             $this->setOptions($this->getSourceOptions());
@@ -56,6 +79,11 @@ class TaxColumn extends Select
         return parent::_toHtml();
     }
 
+    /**
+     * Get source options
+     *
+     * @return array
+     */
     private function getSourceOptions(): array
     {
         return $this->finewebPaymentOptions->toOptionArray();

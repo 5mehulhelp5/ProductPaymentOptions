@@ -1,29 +1,36 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Fineweb_ProductPaymentOptions module registration
+ *
+ * @category    Fineweb
+ * @package     Fineweb_ProductPaymentOptions
+ * @author      Roni Clei Santos
+ * @copyright   Copyright © 2024 Fineweb
+ * @license     [Tipo de Licença]
+ * @version     1.0.0
+ */
+-->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
-        <tab id="fineweb" translate="label" sortOrder="10">
+        <tab id="fineweb" translate="label" sortOrder="100">
             <label>Fineweb</label>
         </tab>
         <section id="product_payment_options" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
             <label>Product Payment Options</label>
             <tab>fineweb</tab>
             <resource>Fineweb_ProductProductPaymentOptions::config_product_payment_options</resource>
-
             <group id="payment_discount" translate="label" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Payment Options Configuration</label>
                 <field id="enabled" translate="label" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="1" type="select">
                     <label>Is Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="ranges" translate="label" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Ranges</label>
-                    <frontend_model>Fineweb\ProductPaymentOptions\Block\Adminhtml\Form\Field\Ranges</frontend_model>
+                <field id="payments" translate="label" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <frontend_model>Fineweb\ProductPaymentOptions\Block\Adminhtml\Form\Field\Rows</frontend_model>
                     <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
-                    <depends>
-                        <field id="product_payment_options/payment_discount/enabled">1</field>
-                    </depends>
                 </field>
             </group>
-
         </section>
     </system>
 </config>

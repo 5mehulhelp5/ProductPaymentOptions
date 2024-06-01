@@ -1,16 +1,52 @@
 <?php
+/**
+ * Fineweb_ProductPaymentOptions extension
+ *
+ * @category    Fineweb
+ * @package     Fineweb_ProductPaymentOptions
+ * @copyright   Copyright © Fineweb, Inc. All rights reserved.
+ * @author      Roni Clei Santos
+ */
+
+/**
+ * Template file to display product payment options
+ *
+ * @var $block ProductPaymentOptions
+ */
+
+use Fineweb\ProductPaymentOptions\Block\ProductPaymentOptions;
+
 $paymentOptions = $block->getProductPaymentOptions();
 if ($paymentOptions):
     ?>
-    <div class="payment-options">
-        <h3><?php echo __('Payment Options'); ?></h3>
-        <ul>
-            <?php foreach ($paymentOptions as $option):  ?>
-                <li>
-                    <strong><?php echo $option['payment_method']; ?>:</strong>
-                    <?php echo $option['payment_method_content']; ?>
-                </li>
-            <?php endforeach; ?>
-        </ul>
+    <div class="fineweb-payment-options">
+        <!-- Button to open payment options modal -->
+        <button type="button" class="action primary tocart" id="openPaymentOptionsModal">View Payment Options</button>
+
+        <!-- Payment options modal -->
+        <div id="paymentOptionsModal" style="display: none;">
+            <div class="modal-inner-wrap-payment-option">
+                <ul>
+                    <?php foreach ($paymentOptions as $key => $option): ?>
+                        <!-- Display each payment option -->
+                        <li id="payment-option<?= $key ?>">
+                            <strong><?= $option['payment_method']; ?>:</strong>
+                            <?= $option['payment_method_content']; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
     </div>
+
+    <!-- Initialize JavaScript component -->
+    <script type="text/x-magento-init">
+        {
+            ".fineweb-payment-options": {
+                "finewebProductPaymentOptions": {
+                    "paymentOptions": <?= json_encode($paymentOptions) ?>
+                }
+            }
+        }
+    </script>
 <?php endif; ?>
