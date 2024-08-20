@@ -1,8 +1,11 @@
 {
     "name": "fineweb/product-payment-options-extension",
-    "description": "Product Payment Options",
+    "description": "Product Payment Options for Magento 2",
     "require": {
-        "php": "~5.5.0|~5.6.0|~7.0.0|~8.0.0"
+        "php": "~8.0.0|~8.1.0|~8.2.0",
+        "magento/framework": "^103.0.0",
+        "magento/module-store": "*",
+        "magento/module-config": "*"
     },
     "type": "magento2-module",
     "version": "1.0.0",
