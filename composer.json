@@ -10,11 +10,11 @@
         "installments",
         "product-page"
     ],
-    "homepage": "https://github.com/roneclay/ProductPaymentOptions",
+    "homepage": "https://github.com/roni-clei-santos/ProductPaymentOptions",
     "authors": [
         {
             "name": "Roni Clei Santos",
-            "homepage": "https://github.com/roneclay",
+            "homepage": "https://github.com/roni-clei-santos",
             "role": "Developer"
         },
         {
@@ -25,8 +25,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/roneclay/ProductPaymentOptions/issues",
-        "source": "https://github.com/roneclay/ProductPaymentOptions"
+        "issues": "https://github.com/roni-clei-santos/ProductPaymentOptions/issues",
+        "source": "https://github.com/roni-clei-santos/ProductPaymentOptions"
     },
     "require": {
         "php": "~8.2.0||~8.3.0",

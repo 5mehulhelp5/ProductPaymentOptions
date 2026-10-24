@@ -47,4 +47,4 @@ First tagged release. It modernizes the module that had been running since 2024 
 
 - The packaged `.zip` archive (and the `.DS_Store` it bundled) that was committed to the repository.
 
-[1.0.0]: https://github.com/roneclay/ProductPaymentOptions/releases/tag/v1.0.0
+[1.0.0]: https://github.com/roni-clei-santos/ProductPaymentOptions/releases/tag/v1.0.0

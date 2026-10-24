@@ -1,6 +1,6 @@
 # Product Payment Options for Magento 2
 
-[![CI](https://github.com/roneclay/ProductPaymentOptions/actions/workflows/ci.yml/badge.svg)](https://github.com/roneclay/ProductPaymentOptions/actions/workflows/ci.yml)
+[![CI](https://github.com/roni-clei-santos/ProductPaymentOptions/actions/workflows/ci.yml/badge.svg)](https://github.com/roni-clei-santos/ProductPaymentOptions/actions/workflows/ci.yml)
 
 Shows, on the product page, what the product costs **per payment method**: the discount for paying with a given
 method, the final price and the installment plan, with interest-free and interest-bearing installments.
@@ -44,7 +44,7 @@ CSS adjustments for the modal.
 The module is installed straight from this repository with Composer:
 
 ```bash
-composer config repositories.fineweb-product-payment-options vcs https://github.com/roneclay/ProductPaymentOptions
+composer config repositories.fineweb-product-payment-options vcs https://github.com/roni-clei-santos/ProductPaymentOptions
 composer require fineweb/product-payment-options-extension:^1.0
 
 bin/magento module:enable Fineweb_ProductPaymentOptions
