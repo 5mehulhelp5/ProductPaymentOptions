@@ -18,6 +18,13 @@ First tagged release. It modernizes the module that had been running since 2024 
 
 ### Changed
 
+- Interest-bearing installments use the fixed-installment table (**Tabela Price**), `price × i / (1 - (1 + i)^-n)`,
+  instead of `price × (1 + i)^n / n`. R$ 1.184,56 at 1,99 % per month in 4x is now R$ 311,02 (it was R$ 320,43) and
+  in 9x R$ 145,06 (it was R$ 157,16, so it is now hidden by a R$ 150 minimum installment). Amounts are rounded only when
+  displayed, and the monthly rate is written with the store's decimal separator (`1,99%`, not `1.99%`).
+- The calculation lives in `view/frontend/web/js/installments.js`, a module without dependencies that is covered by
+  tests (`node --test Test/js`).
+
 - Requires PHP `~8.2.0||~8.3.0` and Magento framework `^103.0.7` (Magento 2.4.7+). All Magento modules the code
   depends on are declared in `composer.json`, and PSR-4 autoloading is configured.
 - Replaced the deprecated `Magento\Framework\Option\ArrayInterface` with `OptionSourceInterface`; added strict types

@@ -19,8 +19,8 @@ question before it is asked, and recalculates it when a configurable or bundle o
 
 - A **View Payment Options** button on the product page opens a modal with one block per configured payment method.
 - Fixed or percentage discount per payment method (a fixed discount takes precedence).
-- Installments: interest-free up to N, compound monthly interest afterwards, with a **minimum installment value** below
-  which an installment is hidden.
+- Installments: interest-free up to N, then the fixed-installment table (**Tabela Price**) at a monthly rate, with a
+  **minimum installment value** below which an installment is hidden.
 - Works with simple, configurable and bundle products; the amounts follow the selected options.
 - Prices are formatted with the store's price format and rounded to cents.
 - Configurable **per website and store view**; only the payment methods active in the store are shown.
@@ -69,20 +69,21 @@ active in that scope.
 | Percentage Discount | Percentage subtracted from the price. |
 | Max Installments Allowed | Highest installment count offered (1 shows only the final price). |
 | Number of No Interest Installments | Installments up to this number carry no interest. |
-| Monthly Interest Rate (%) | Compound monthly interest of the remaining installments, e.g. `1.99`. |
+| Monthly Interest Rate (%) | Monthly interest of the installments after the interest-free ones, e.g. `1.99`. |
 | Payment Method Content to Show | Free text shown next to the payment method. |
 
 ### How the amounts are calculated
 
 ```
-final price    = price - fixed discount           (or price - price × percentage / 100)
-installment n  = final price / n                  for n ≤ interest-free installments
-installment n  = final price × (1 + i)^n / n      for the following ones, with i = monthly rate / 100
+final price    = price - fixed discount             (or price - price × percentage / 100)
+installment n  = final price / n                    for n ≤ interest-free installments
+installment n  = final price × i / (1 - (1 + i)^-n) for the following ones (Tabela Price), i = monthly rate / 100
 ```
 
-Every amount is rounded to cents, and installments below the minimum installment value are not shown. With a price of
-R$ 1.234,56, a fixed R$ 50 discount, 3 interest-free installments and 1,99 % per month, the 4th installment is
-R$ 320,43.
+The interest applies to the whole discounted price. Amounts are rounded to cents only when they are displayed, and an
+installment below the minimum installment value is not shown. With a price of R$ 1.234,56, a fixed R$ 50 discount
+(R$ 1.184,56 to pay), 3 interest-free installments and 1,99 % per month, the 4th installment is R$ 311,02 and the 9th
+(R$ 145,06) is hidden by a R$ 150 minimum. The rate is written with the store's decimal separator (`1,99%` in `pt_BR`).
 
 ## Screenshots
 
