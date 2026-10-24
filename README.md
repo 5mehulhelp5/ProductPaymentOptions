@@ -1,52 +1,111 @@
-# Fineweb Product Payment Options
+# Product Payment Options for Magento 2
 
-The Fineweb Product Payment Options module enhances Magento 2 stores by providing additional payment options for products.
+[![CI](https://github.com/roneclay/ProductPaymentOptions/actions/workflows/ci.yml/badge.svg)](https://github.com/roneclay/ProductPaymentOptions/actions/workflows/ci.yml)
 
-## Installation
+Shows, on the product page, what the product costs **per payment method**: the discount for paying with a given
+method, the final price and the installment plan, with interest-free and interest-bearing installments.
 
-To install this module, follow these steps:
+## The problem it solves
 
-1. Copy the module files to the `app/code/Fineweb/ProductPaymentOptions` directory of your Magento 2 installation.
-2. Run the following commands in your Magento 2 root directory:
+In Brazilian e-commerce the price is rarely one number. "R$ 1.234,56" can also be "R$ 1.111,10 in cash with 10 % off" or
+"6 × R$ 185,18 interest-free", and the shopper wants to know that on the product page, not at the last step of the
+checkout. Magento core has no notion of a price per payment method, so nothing on the product page can say it.
 
-   ```bash
-   php bin/magento module:enable Fineweb_ProductPaymentOptions
-   php bin/magento setup:upgrade
-   ```
-
-3. Verify that the module is enabled by running:
-
-   ```bash
-   php bin/magento module:status
-   ```
+This module lets the merchant describe, per payment method, a discount (fixed or percentage), how many installments are
+offered, how many of them are interest-free and the monthly interest of the rest. The product page then answers the
+question before it is asked, and recalculates it when a configurable or bundle option changes the price.
 
 ## Features
 
-- Adds extra payment options to product pages.
-- Allows customization of payment methods and discounts through the admin panel.
-- Provides an intuitive interface for managing payment options.
+- A **View Payment Options** button on the product page opens a modal with one block per configured payment method.
+- Fixed or percentage discount per payment method (a fixed discount takes precedence).
+- Installments: interest-free up to N, compound monthly interest afterwards, with a **minimum installment value** below
+  which an installment is hidden.
+- Works with simple, configurable and bundle products; the amounts follow the selected options.
+- Prices are formatted with the store's price format and rounded to cents.
+- Configurable **per website and store view**; only the payment methods active in the store are shown.
+- Translated to English and Brazilian Portuguese.
 
-## Configuration
-
-Once installed, you can configure the payment options by navigating to `Stores > Configuration > Fineweb > Product Payment Options` in the admin panel.
-
-### Functions
-
-This module provides the following functions:
-
-- **Enhanced Payment Options**: Display additional payment methods on product pages to offer customers more choices during checkout.
-- **Customization**: Customize payment methods, discounts, and other settings through the Magento admin panel.
-- **Intuitive Interface**: User-friendly interface for managing and configuring payment options without extensive technical knowledge.
-
-## Usage
-
-After configuring the payment options, they will be displayed on the product pages of your store. Customers can view and select the available payment methods during checkout.
+Grouped products are not supported (the block is removed from their page).
 
 ## Compatibility
 
-- This module is compatible with Magento 2.x versions.
-- This module is NOT compatible with Grouped Products.
+| | |
+|---|---|
+| Declared | Magento Open Source / Adobe Commerce **2.4.7+** (`magento/framework` `^103.0.7`), PHP **8.2 – 8.3** |
+| Tested end-to-end | Magento Open Source **2.4.8-p4**, PHP 8.3, MariaDB 10.6, OpenSearch 2.12, Luma theme with the sample data, `pt_BR` / BRL |
+| CI | phpcs (Magento2 standard), phpstan level 9 and PHPUnit on PHP 8.2 and 8.3 |
 
-## Support
+The end-to-end tests (Playwright, in `e2e/`) were run against the Magento 2.4.8-p4 store above. Other themes may need
+CSS adjustments for the modal.
 
-For any issues or inquiries, please contact our support team at support@fineweb.com.
+## Installation
+
+The module is installed straight from this repository with Composer:
+
+```bash
+composer config repositories.fineweb-product-payment-options vcs https://github.com/roneclay/ProductPaymentOptions
+composer require fineweb/product-payment-options-extension:^1.0
+
+bin/magento module:enable Fineweb_ProductPaymentOptions
+bin/magento setup:upgrade
+bin/magento setup:di:compile                  # production mode only
+bin/magento setup:static-content:deploy -f    # production mode only
+bin/magento cache:flush
+```
+
+## Configuration
+
+`Stores > Configuration > Fineweb > Product Payment Options > Payment Options Configuration`. Choose the scope
+(default, website or store view) in the scope switcher first: the payment methods offered in the table are the ones
+active in that scope.
+
+| Field | Meaning |
+|---|---|
+| Enabled | Shows the button and the modal on the product page. |
+| Minimum Installment Value | Installments below this amount are hidden. |
+| Payment Method | One of the active payment methods. |
+| Fixed Discount | Amount subtracted from the price. Takes precedence over the percentage. |
+| Percentage Discount | Percentage subtracted from the price. |
+| Max Installments Allowed | Highest installment count offered (1 shows only the final price). |
+| Number of No Interest Installments | Installments up to this number carry no interest. |
+| Monthly Interest Rate (%) | Compound monthly interest of the remaining installments, e.g. `1.99`. |
+| Payment Method Content to Show | Free text shown next to the payment method. |
+
+### How the amounts are calculated
+
+```
+final price    = price - fixed discount           (or price - price × percentage / 100)
+installment n  = final price / n                  for n ≤ interest-free installments
+installment n  = final price × (1 + i)^n / n      for the following ones, with i = monthly rate / 100
+```
+
+Every amount is rounded to cents, and installments below the minimum installment value are not shown. With a price of
+R$ 1.234,56, a fixed R$ 50 discount, 3 interest-free installments and 1,99 % per month, the 4th installment is
+R$ 320,43.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Product page](docs/screenshots/product-page-button.png) | ![Modal](docs/screenshots/modal-installments.png) |
+| The button on the product page (price R$ 1.234,56). | The modal: discounts, final prices and installments. |
+| ![Configurable product](docs/screenshots/configurable-size-36.png) | ![Admin configuration](docs/screenshots/admin-configuration.png) |
+| A configurable product: the plan follows the chosen size (R$ 2.000,99). | The configuration table at website scope. |
+
+They were captured by the end-to-end tests, so they show what the module renders.
+
+## Development
+
+```bash
+# original Magento packages from a public mirror, no repo.magento.com keys needed
+composer config -g repositories.magento-mirror composer https://mirror.mage-os.org/
+composer install
+composer check        # phpcs + phpstan + PHPUnit
+```
+
+The `e2e/` folder has the Playwright tests that run against a store with the module installed; see `e2e/README.md`.
+
+## License
+
+[MIT](LICENSE) © Roni Clei Santos
