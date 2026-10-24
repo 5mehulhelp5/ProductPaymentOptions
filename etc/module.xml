@@ -1,16 +1,16 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Fineweb_ProductPaymentOptions module registration
- *
- * @category    Fineweb
- * @package     Fineweb_ProductPaymentOptions
- * @author      Roni Clei Santos
- * @copyright   Copyright © 2024 Fineweb
- * @license     [Tipo de Licença]
- * @version     1.0.0
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
-    <module name="Fineweb_ProductPaymentOptions" setup_version="1.0.0"/>
+    <module name="Fineweb_ProductPaymentOptions">
+        <sequence>
+            <module name="Magento_Catalog"/>
+            <module name="Magento_Config"/>
+            <module name="Magento_Payment"/>
+        </sequence>
+    </module>
 </config>

@@ -1,19 +1,22 @@
 {
     "name": "fineweb/product-payment-options-extension",
-    "description": "Product Payment Options for Magento 2",
-    "require": {
-        "php": "~8.0.0|~8.1.0|~8.2.0",
-        "magento/framework": "^103.0.0",
-        "magento/module-store": "*",
-        "magento/module-config": "*"
-    },
+    "description": "Magento 2 / Adobe Commerce module that shows per-payment-method discounts and installment simulations on the product page.",
     "type": "magento2-module",
-    "version": "1.0.0",
-    "license": [
-        "OSL-3.0",
-        "AFL-3.0"
+    "license": "MIT",
+    "keywords": [
+        "magento2",
+        "adobe-commerce",
+        "payment",
+        "installments",
+        "product-page"
     ],
+    "homepage": "https://github.com/roneclay/ProductPaymentOptions",
     "authors": [
+        {
+            "name": "Roni Clei Santos",
+            "homepage": "https://github.com/roneclay",
+            "role": "Developer"
+        },
         {
             "name": "Fineweb",
             "email": "support@fineweb.com.br",
@@ -21,9 +24,70 @@
             "role": "Developer"
         }
     ],
+    "support": {
+        "issues": "https://github.com/roneclay/ProductPaymentOptions/issues",
+        "source": "https://github.com/roneclay/ProductPaymentOptions"
+    },
+    "require": {
+        "php": "~8.2.0||~8.3.0",
+        "magento/framework": "^103.0.7",
+        "magento/module-backend": "^102.0.7",
+        "magento/module-catalog": "^104.0.7",
+        "magento/module-config": "^101.2.7",
+        "magento/module-payment": "^100.4.7",
+        "magento/module-store": "^101.1.7",
+        "magento/module-ui": "^101.2.7"
+    },
+    "require-dev": {
+        "bitexpert/phpstan-magento": "^0.32",
+        "magento/magento-coding-standard": "^38",
+        "phpstan/phpstan": "^1.12",
+        "phpunit/phpunit": "^10.5"
+    },
     "autoload": {
         "files": [
             "registration.php"
+        ],
+        "psr-4": {
+            "Fineweb\\ProductPaymentOptions\\": ""
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fineweb\\ProductPaymentOptions\\Test\\": "Test/"
+        }
+    },
+    "archive": {
+        "exclude": [
+            "/.github",
+            "/Test",
+            "/e2e",
+            "/docs",
+            "/phpunit.xml.dist",
+            "/phpstan.neon.dist",
+            "/phpcs.xml.dist"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "magento/composer-dependency-version-audit-plugin": true,
+            "magento/composer-root-update-plugin": true,
+            "magento/magento-composer-installer": true,
+            "mage-os/composer-dependency-version-audit-plugin": true,
+            "mage-os/composer-root-update-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "phpcs": "phpcs",
+        "phpstan": "phpstan analyse --memory-limit=1G",
+        "check": [
+            "@phpcs",
+            "@phpstan",
+            "@test"
         ]
     }
 }
