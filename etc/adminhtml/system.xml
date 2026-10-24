@@ -1,14 +1,8 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Fineweb_ProductPaymentOptions module registration
- *
- * @category    Fineweb
- * @package     Fineweb_ProductPaymentOptions
- * @author      Roni Clei Santos
- * @copyright   Copyright © 2024 Fineweb
- * @license     [Tipo de Licença]
- * @version     1.0.0
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
@@ -23,15 +17,16 @@
             <group id="payment_discount" translate="label" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Payment Options Configuration</label>
                 <field id="enabled" translate="label" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="1" type="select">
-                    <label>Is Enable</label>
+                    <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
                 <field id="min_installment_value" translate="label" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1" type="text">
                     <label>Minimum Installment Value</label>
-                    <comment>Enter the minimum value allowed for each installment.</comment>
+                    <comment>Installments whose value falls below this amount are hidden from the product page.</comment>
                 </field>
-                <field id="payments" translate="label" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <comment>Note: If the "Minimum Order Value" option is enabled, that value will be considered when calculating the "Number of No Interest Installments".</comment>
+                <field id="payments" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Payment Methods</label>
+                    <comment>One row per payment method. A fixed discount takes precedence over a percentage discount.</comment>
                     <frontend_model>Fineweb\ProductPaymentOptions\Block\Adminhtml\Form\Field\Rows</frontend_model>
                     <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
                 </field>

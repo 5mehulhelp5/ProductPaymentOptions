@@ -1,10 +1,6 @@
 /**
- * Fineweb_ProductPaymentOptions extension
- *
- * @category    Fineweb
- * @package     Fineweb_ProductPaymentOptions
- * @copyright   Copyright © 2024 Fineweb
- * @author      Roni Clei Santos
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
  */
 
 var config = {

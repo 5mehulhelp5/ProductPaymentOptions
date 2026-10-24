@@ -15,4 +15,8 @@ Add,Add
 Fineweb,Fineweb
 "Product Payment Options","Product Payment Options"
 "Payment Options Configuration","Payment Options Configuration"
-"Is Enable","Is Enable"
+"Enabled","Enabled"
+"Payment Methods","Payment Methods"
+"Installments whose value falls below this amount are hidden from the product page.","Installments whose value falls below this amount are hidden from the product page."
+"One row per payment method. A fixed discount takes precedence over a percentage discount.","One row per payment method. A fixed discount takes precedence over a percentage discount."
+"View Payment Options","View Payment Options"

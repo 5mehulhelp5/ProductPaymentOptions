@@ -1,6 +1,6 @@
 // /**
-//  * Copyright © Fineweb, Inc. All rights reserved.
-//  * See COPYING.txt for license details.
+//  * Copyright © Fineweb. All rights reserved.
+//  * See LICENSE for license details.
 //  */
 
 //
@@ -11,8 +11,10 @@
     .fineweb-payment-options-modal {
         display: none;
 
-        .payment-option-content:before {
-            content: " - ";
+        .payment-option-content {
+            &::before {
+                content: ' - ';
+            }
         }
     }
 }
