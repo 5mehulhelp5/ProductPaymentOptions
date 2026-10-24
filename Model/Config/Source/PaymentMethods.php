@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Fineweb\ProductPaymentOptions\Model\Config\Source;
 
-use Fineweb\ProductPaymentOptions\Block\ProductPaymentOptions;
+use Fineweb\ProductPaymentOptions\Model\Config;
 use InvalidArgumentException;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
@@ -32,14 +32,14 @@ class PaymentMethods implements OptionSourceInterface
      * @param PaymentMethodListInterface $paymentMethodList
      * @param RequestInterface $request
      * @param StoreManagerInterface $storeManager
-     * @param ScopeConfigInterface $scopeConfig
+     * @param Config $config
      * @param Json $json
      */
     public function __construct(
         private readonly PaymentMethodListInterface $paymentMethodList,
         private readonly RequestInterface $request,
         private readonly StoreManagerInterface $storeManager,
-        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly Config $config,
         private readonly Json $json
     ) {
     }
@@ -122,8 +122,8 @@ class PaymentMethods implements OptionSourceInterface
      */
     private function getSavedMethodCodes(string $scopeType, ?string $scopeCode): array
     {
-        $saved = $this->scopeConfig->getValue(ProductPaymentOptions::XML_PATH_PAYMENTS, $scopeType, $scopeCode);
-        if (!is_string($saved) || $saved === '') {
+        $saved = $this->config->getPayments($scopeType, $scopeCode);
+        if ($saved === null) {
             return [];
         }
 

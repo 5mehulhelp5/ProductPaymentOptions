@@ -6,50 +6,47 @@
 
 declare(strict_types=1);
 
-use Fineweb\ProductPaymentOptions\Block\ProductPaymentOptions;
+use Fineweb\ProductPaymentOptions\ViewModel\PaymentOptions;
 use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
 
-/** @var ProductPaymentOptions $block */
+/** @var Template $block */
 /** @var Escaper $escaper */
+/** @var PaymentOptions $viewModel */
 
-$paymentOptions = $block->getProductPaymentOptions();
-$minInstallmentValue = $block->getMinInstallmentValue() ?? 0.0;
+$viewModel = $block->getData('view_model');
+$options = $viewModel->getOptions();
 ?>
-<?php if ($paymentOptions): ?>
-    <div class="fineweb-payment-options">
-        <button type="button" class="action primary tocart" id="openPaymentOptionsModal">
+<?php if ($options): ?>
+    <div class="fineweb-payment-options" data-role="fineweb-payment-options">
+        <button type="button"
+                class="action primary tocart fineweb-payment-options__button"
+                data-action="open-payment-options">
             <?= $escaper->escapeHtml(__('View Payment Options')) ?>
         </button>
 
-        <div id="paymentOptionsModal" class="fineweb-payment-options-modal" style="display: none;">
-            <div class="modal-inner-wrap-payment-option">
-                <ul>
-                    <?php foreach ($paymentOptions as $key => $option): ?>
-                        <li id="payment-option<?= $escaper->escapeHtmlAttr((string) $key) ?>">
-                            <span class="payment-option-title">
-                                <?= $escaper->escapeHtml($option['payment_method']) ?>
+        <div class="fineweb-payment-options__modal" data-role="payment-options-modal">
+            <ul class="fineweb-payment-options__list">
+                <?php foreach ($options as $key => $option): ?>
+                    <li class="fineweb-payment-options__option"
+                        data-role="payment-option"
+                        data-option-key="<?= $escaper->escapeHtmlAttr((string) $key) ?>">
+                        <span class="fineweb-payment-options__title">
+                            <?= $escaper->escapeHtml($option['payment_method']) ?>
+                        </span>
+                        <?php if ($option['payment_method_content'] !== ''): ?>
+                            <span class="fineweb-payment-options__note">
+                                <?= $escaper->escapeHtml($option['payment_method_content']) ?>
                             </span>
-                            <?php if ($option['payment_method_content'] !== ''): ?>
-                                <span class="payment-option-content">
-                                    <?= $escaper->escapeHtml($option['payment_method_content']) ?>
-                                </span>
-                            <?php endif; ?>
-                            <div class="price-content"></div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+                        <?php endif; ?>
+                        <div class="fineweb-payment-options__prices" data-role="payment-option-prices"></div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
         </div>
     </div>
 
     <script type="text/x-magento-init">
-        <?= /* @noEscape */ $block->serializeForScript([
-            '.fineweb-payment-options' => [
-                'finewebProductPaymentOptions' => [
-                    'paymentOptions' => $paymentOptions,
-                    'minInstallmentValue' => $minInstallmentValue,
-                ],
-            ],
-        ]) ?>
+        <?= /* @noEscape */ $viewModel->getInitConfig() ?>
     </script>
 <?php endif; ?>

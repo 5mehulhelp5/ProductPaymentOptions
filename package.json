@@ -1,0 +1,14 @@
+{
+    "name": "fineweb-product-payment-options-tooling",
+    "private": true,
+    "description": "Development tooling of the module (ESLint and the JavaScript tests). The module itself is installed with Composer.",
+    "license": "MIT",
+    "scripts": {
+        "lint": "eslint --max-warnings 0 view",
+        "test:js": "node --test Test/js/installments.test.mjs"
+    },
+    "devDependencies": {
+        "eslint": "^10.13.0",
+        "globals": "^17.0.0"
+    }
+}
