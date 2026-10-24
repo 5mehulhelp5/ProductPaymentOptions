@@ -104,10 +104,12 @@
             "@blacklist",
             "@phpcs",
             "@phpmd",
+            "@phpcpd",
             "@phpstan",
             "@check-tests-exist",
             "@check-scope",
             "@coverage"
-        ]
+        ],
+        "phpcpd": "bash dev/ci/phpcpd.sh Block Model ViewModel"
     }
 }
