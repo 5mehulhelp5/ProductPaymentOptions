@@ -6,32 +6,11 @@ define([
     'jquery',
     'Magento_Catalog/js/price-utils',
     'Magento_Ui/js/modal/modal',
+    'Fineweb_ProductPaymentOptions/js/installments',
     'mage/translate',
     'jquery/ui'
-], function ($, priceUtils, modal) {
+], function ($, priceUtils, modal, installments) {
     'use strict';
-
-    /**
-     * Parse a configured number, treating empty or invalid values as zero.
-     *
-     * @param {String|Number} value
-     * @returns {Number}
-     */
-    function toNumber(value) {
-        const number = parseFloat(value);
-
-        return isNaN(number) ? 0 : number;
-    }
-
-    /**
-     * Round a monetary amount to two decimal places.
-     *
-     * @param {Number} amount
-     * @returns {Number}
-     */
-    function roundMoney(amount) {
-        return Math.round((amount + Number.EPSILON) * 100) / 100;
-    }
 
     /**
      * Widget for managing product payment options
@@ -98,7 +77,7 @@ define([
         _updatePaymentOptions: function () {
             const paymentOptions = this.options.paymentOptions;
             const productPrice = this.options.productPrice;
-            const minInstallmentValue = toNumber(this.options.minInstallmentValue);
+            const minInstallmentValue = installments.toNumber(this.options.minInstallmentValue);
 
             $('.fineweb-installments').remove();
 
@@ -109,63 +88,27 @@ define([
 
             for (const key in paymentOptions) {
                 if (paymentOptions.hasOwnProperty(key)) {
-                    const option = paymentOptions[key];
-                    const discountFixed = toNumber(option.discount_fixed);
-                    const discountPercentage = toNumber(option.discount_percentage);
-                    const maxInstallments = parseInt(option.max_installments, 10);
-                    const noInterestInstallments = parseInt(option.no_interest_installments, 10) || 0;
-                    const monthlyInterestRate = toNumber(option.monthly_interest_rate);
+                    const plan = installments.calculate(productPrice, paymentOptions[key], minInstallmentValue);
                     let content = '<div class="fineweb-installments">';
-                    let finalPrice = productPrice;
 
-                    // Apply fixed or percentage discount
-                    if (discountFixed > 0) {
-                        finalPrice -= discountFixed;
-                    } else if (discountPercentage > 0) {
-                        finalPrice -= (productPrice * discountPercentage / 100);
+                    // Amounts are rounded to cents only here, where they are displayed
+                    if (plan.hasDiscount) {
+                        content += '<p class="fineweb-discount-amount">' + $.mage.__('Discount: ') + this._formatCurrency(installments.roundMoney(plan.discount)) + '</p>';
                     }
 
-                    // Ensure finalPrice is not less than zero and round it for display purposes
-                    finalPrice = roundMoney(Math.max(finalPrice, 0));
+                    content += '<p class="fineweb-final-amount">' + $.mage.__('Final Price: ') + this._formatCurrency(installments.roundMoney(plan.final)) + '</p>';
 
-                    // Add discount if applicable
-                    if (discountFixed > 0 || discountPercentage > 0) {
-                        content += '<p class="fineweb-discount-amount">' + $.mage.__('Discount: ') + this._formatCurrency(roundMoney(productPrice - finalPrice)) + '</p>';
-                    }
-
-                    // Final price
-                    content += '<p class="fineweb-final-amount">' + $.mage.__('Final Price: ') + this._formatCurrency(finalPrice) + '</p>';
-
-                    // Installments details
-                    if (maxInstallments > 1) {
+                    if (plan.installments.length) {
                         content += '<p>' + $.mage.__('Installment Options:') + '</p>';
-                        for (let i = 1; i <= maxInstallments; i++) {
-                            let installmentAmount;
-                            if (i <= noInterestInstallments) {
-                                installmentAmount = finalPrice / i;
-                            } else {
-                                // Calculate installment with compound monthly interest
-                                const interestMultiplier = Math.pow(1 + monthlyInterestRate / 100, i);
-                                installmentAmount = (finalPrice * interestMultiplier) / i;
-                            }
-
-                            // Round installmentAmount for display purposes
-                            installmentAmount = roundMoney(installmentAmount);
-
-                            // Hide installments below the minimum value
-                            if (installmentAmount >= minInstallmentValue) {
-                                content += '<p>' + i + ' x ' + this._formatCurrency(installmentAmount) + (i > noInterestInstallments ? ' (' + $.mage.__('with ') + monthlyInterestRate + '% ' + $.mage.__('interest per month') + ')' : '') + '</p>';
-                            }
-                        }
-                    } else {
-                        content += '<p>' + this._formatCurrency(finalPrice) + '</p>';
+                        plan.installments.forEach(function (installment) {
+                            content += '<p>' + installment.count + ' x ' + this._formatCurrency(installments.roundMoney(installment.amount)) + (installment.withInterest ? ' (' + $.mage.__('with ') + this._formatPercent(plan.monthlyRate) + '% ' + $.mage.__('interest per month') + ')' : '') + '</p>';
+                        }, this);
                     }
 
                     content += '</div>';
 
                     // Update the HTML of the corresponding LI
-                    const $li = $('#payment-option' + key).find('.price-content');
-                    $li.html(content);
+                    $('#payment-option' + key).find('.price-content').html(content);
                 }
             }
         },
@@ -188,6 +131,17 @@ define([
          */
         _getPriceBoxWidget: function () {
             return this._getPriceBox().data('mage-priceBox');
+        },
+
+        /**
+         * Get the price format of the store, when the price box is initialized
+         * @private
+         * @returns {Object|undefined}
+         */
+        _getPriceFormat: function () {
+            const widget = this._getPriceBoxWidget();
+
+            return widget && widget.options.priceConfig && widget.options.priceConfig.priceFormat;
         },
 
         /**
@@ -218,8 +172,7 @@ define([
          * @returns {string}
          */
         _formatCurrency: function (amount) {
-            const widget = this._getPriceBoxWidget();
-            const priceFormat = widget && widget.options.priceConfig && widget.options.priceConfig.priceFormat;
+            const priceFormat = this._getPriceFormat();
             const currency = $('meta[itemprop="priceCurrency"]').attr('content');
 
             if (priceFormat) {
@@ -234,6 +187,24 @@ define([
             }
 
             return amount.toFixed(2);
+        },
+
+        /**
+         * Format a number such as an interest rate with the store's decimal separator ("1,99" in pt_BR)
+         * @private
+         * @param {number} value
+         * @returns {string}
+         */
+        _formatPercent: function (value) {
+            const priceFormat = this._getPriceFormat();
+
+            if (priceFormat && priceFormat.decimalSymbol) {
+                return String(value).replace('.', priceFormat.decimalSymbol);
+            }
+
+            return new Intl.NumberFormat(document.documentElement.lang || undefined, {
+                maximumFractionDigits: 4
+            }).format(value);
         },
 
         /**
