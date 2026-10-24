@@ -13,8 +13,9 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Serialize\Serializer\JsonHexTag;
 use Magento\Framework\View\Element\Template;
-use Magento\Payment\Model\Config as PaymentConfig;
+use Magento\Payment\Api\PaymentMethodListInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\StoreManagerInterface;
 
 /**
  * Block class for retrieving and formatting product payment options.
@@ -40,7 +41,8 @@ class ProductPaymentOptions extends Template
     /**
      * @param Template\Context $context
      * @param ScopeConfigInterface $scopeConfig
-     * @param PaymentConfig $paymentConfig
+     * @param PaymentMethodListInterface $paymentMethodList
+     * @param StoreManagerInterface $storeManager
      * @param Json $json
      * @param JsonHexTag $jsonHexTag
      * @param mixed[] $data
@@ -48,7 +50,8 @@ class ProductPaymentOptions extends Template
     public function __construct(
         Template\Context $context,
         private readonly ScopeConfigInterface $scopeConfig,
-        private readonly PaymentConfig $paymentConfig,
+        private readonly PaymentMethodListInterface $paymentMethodList,
+        private readonly StoreManagerInterface $storeManager,
         private readonly Json $json,
         private readonly JsonHexTag $jsonHexTag,
         array $data = []
@@ -57,7 +60,9 @@ class ProductPaymentOptions extends Template
     }
 
     /**
-     * Retrieve the configured payment option rows, with each payment method code resolved to its title.
+     * Retrieve the payment option rows of the payment methods active in the current store.
+     *
+     * Each payment method code is resolved to its title; rows of methods that are not offered in the store are left out.
      *
      * @return array<string, array<string, string>>|null
      */
@@ -84,7 +89,10 @@ class ProductPaymentOptions extends Template
                 continue;
             }
             $row += self::ROW_DEFAULTS;
-            $row['payment_method'] = $titles[$row['payment_method']] ?? $row['payment_method'];
+            if (!isset($titles[$row['payment_method']])) {
+                continue; // not offered in this store, so a discount for it would mislead the customer
+            }
+            $row['payment_method'] = $titles[$row['payment_method']];
             $options[$key] = $row;
         }
 
@@ -115,18 +123,17 @@ class ProductPaymentOptions extends Template
     }
 
     /**
-     * Map active payment method codes to their titles.
+     * Map the codes of the payment methods active in the current store to their titles.
      *
      * @return array<string, string>
      */
     private function getActivePaymentMethodTitles(): array
     {
         $titles = [];
-        foreach ($this->paymentConfig->getActiveMethods() as $code => $method) {
+        foreach ($this->paymentMethodList->getActiveList((int) $this->storeManager->getStore()->getId()) as $method) {
+            $code = (string) $method->getCode();
             $title = (string) $method->getTitle();
-            if ($title !== '') {
-                $titles[(string) $code] = $title;
-            }
+            $titles[$code] = $title !== '' ? $title : $code;
         }
 
         return $titles;
