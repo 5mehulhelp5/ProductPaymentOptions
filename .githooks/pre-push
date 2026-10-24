@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 IC=dev/ci/in-container.sh
+rm -f build/.hook-skipped
 step() { printf '\n==> %s\n' "$1"; }
 
 step "Sync the checkout into the container"
@@ -31,4 +32,8 @@ $IC php -d xdebug.mode=coverage vendor/bin/phpunit --coverage-clover build/clove
 $IC php dev/ci/check-coverage.php build/clover.xml 70
 
 echo
-echo "pre-push: OK"
+if [ -f build/.hook-skipped ]; then
+    echo "pre-push: PASSED, BUT $(grep -vc '^--sync$' build/.hook-skipped) PHP check(s) were SKIPPED (container not running)." >&2
+else
+    echo "pre-push: OK"
+fi

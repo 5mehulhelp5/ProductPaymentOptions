@@ -17,6 +17,7 @@ MIRROR="${MAGENTO_MIRROR:-https://mirror.mage-os.org/}"
 
 if ! command -v docker >/dev/null 2>&1 || [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null || true)" != "true" ]; then
     echo "WARNING: container '$NAME' is not running, skipping: ${*:-sync}" >&2
+    mkdir -p "$ROOT/build" && echo "${*:-sync}" >> "$ROOT/build/.hook-skipped"
     exit 0
 fi
 
@@ -27,7 +28,7 @@ sync_checkout() {
         docker exec "$NAME" rm -rf "${DIR:?}/$top"
     done
     git -C "$ROOT" ls-files -z --cached --others --exclude-standard \
-        | COPYFILE_DISABLE=1 tar -C "$ROOT" --null -T - -cf - 2>/dev/null \
+        | COPYFILE_DISABLE=1 tar -C "$ROOT" --null -T - --no-xattrs -cf - 2>/dev/null \
         | docker exec -i "$NAME" tar -x -C "$DIR"
 
     local wanted current

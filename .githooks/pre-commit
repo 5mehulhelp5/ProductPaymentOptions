@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 IC=dev/ci/in-container.sh
+rm -f build/.hook-skipped
 step() { printf '\n==> %s\n' "$1"; }
 
 step "Sync the checkout into the container"
@@ -27,4 +28,8 @@ step "phpcpd (5 lines / 70 tokens)"
 $IC bash dev/ci/phpcpd.sh Block Model ViewModel
 
 echo
-echo "pre-commit: OK"
+if [ -f build/.hook-skipped ]; then
+    echo "pre-commit: PASSED, BUT $(grep -vc '^--sync$' build/.hook-skipped) PHP check(s) were SKIPPED (container not running)." >&2
+else
+    echo "pre-commit: OK"
+fi
