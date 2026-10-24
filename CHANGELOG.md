@@ -20,6 +20,11 @@ amounts), but the module is now structured, tested and checked the way a Magento
 - The markup uses `data-role` / `data-action` hooks scoped to the widget element instead of fixed ids, and no inline style.
 - CSS classes are BEM in kebab-case with the `fineweb-` prefix (`fineweb-payment-options__button`); the LESS has at most 3
   levels and is mobile first.
+- **Upgrade note:** the markup hooks were renamed. A theme that styled or scripted the old ones must follow:
+  `#openPaymentOptionsModal` → `[data-action="open-payment-options"]`, `#paymentOptionsModal` → `[data-role="payment-options-modal"]`,
+  `.fineweb-payment-options-modal` → `.fineweb-payment-options__modal`, `.payment-option-title` / `.payment-option-content` →
+  `.fineweb-payment-options__title` / `__note`, `.fineweb-installments` → `.fineweb-payment-options__plan` and its lines
+  `.fineweb-discount-amount` / `.fineweb-final-amount` → `__discount` / `__final`.
 
 ### Added
 
