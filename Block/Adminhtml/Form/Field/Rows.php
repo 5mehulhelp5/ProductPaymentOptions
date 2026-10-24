@@ -93,11 +93,13 @@ class Rows extends AbstractFieldArray
     private function getPaymentRenderer(): Column
     {
         if ($this->paymentRenderer === null) {
-            $this->paymentRenderer = $this->getLayout()->createBlock(
+            /** @var Column $renderer */
+            $renderer = $this->getLayout()->createBlock(
                 Column::class,
                 '',
                 ['data' => ['is_render_to_js_template' => true]]
             );
+            $this->paymentRenderer = $renderer;
         }
 
         return $this->paymentRenderer;
