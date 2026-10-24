@@ -14,31 +14,54 @@ export const parseBRL = (text) => parseFloat(text.replace(/[^\d,]/g, '').replace
 /** The price format of the pt_BR store: "R$ 1.234,56". */
 export const BRL_FORMAT = /^R\$\s?\d{1,3}(\.\d{3})*,\d{2}$/;
 
-/** Round to cents by going through a decimal string, independent of the module's own rounding code. */
-export const cents = (value) => Number(value.toFixed(2));
-
 /**
- * Hand calculation of one payment row, from the configuration seeded in the store:
- * a fixed discount wins over a percentage one; interest is compound; installments below `min` are hidden.
+ * Amounts the modal must show, per product price, for the two payment rows seeded in the store (see
+ * magento-qa/seed-qa-data). Calculated by hand with exact decimals, half-up to cents, and kept fixed here:
+ *
+ *   Check / Money order: 10 % discount, up to 6 interest-free installments.
+ *   Bank Transfer: R$ 50 discount, 3 interest-free installments, then Tabela Price at 1,99 % a.m. up to 12x,
+ *     installment = price x i / (1 - (1 + i)^-n); minimum installment R$ 150, so smaller ones are hidden.
+ *
+ * Each installment is [number, amount, withInterest].
  */
-export function expectedRow(price, { fixed = 0, percentage = 0, max, noInterest, rate = 0 }, min) {
-  let final = price;
-  if (fixed > 0) final = price - fixed;
-  else if (percentage > 0) final = price - (price * percentage) / 100;
-  final = cents(Math.max(final, 0));
+const free = (...amounts) => amounts.map((amount, index) => [index + 1, amount, false]);
+const priced = (first, ...amounts) => amounts.map((amount, index) => [first + index, amount, true]);
 
-  const installments = [];
-  for (let n = 1; n <= max; n += 1) {
-    const amount = n <= noInterest ? final / n : (final * (1 + rate / 100) ** n) / n;
-    if (cents(amount) >= min) installments.push({ n, amount: cents(amount), withInterest: n > noInterest });
-  }
-  return { final, discount: cents(price - final), hasDiscount: fixed > 0 || percentage > 0, installments };
-}
-
-/** Rows seeded in the store (website scope), see magento-qa/seed-qa-data. */
-export const CHECKMO = { fixed: 0, percentage: 10, max: 6, noInterest: 6, rate: 0 };
-export const BANK_TRANSFER = { fixed: 50, percentage: 0, max: 12, noInterest: 3, rate: 1.99 };
-export const MIN_INSTALLMENT = 150;
+export const PLANS = {
+  1234.56: {
+    checkmo: { discount: 123.46, final: 1111.1, installments: free(1111.1, 555.55, 370.37, 277.78, 222.22, 185.18) },
+    bank: {
+      discount: 50, final: 1184.56,
+      installments: [...free(1184.56, 592.28, 394.85), ...priced(4, 311.02, 251.24, 211.4, 182.96, 161.63)], // 9x = 145.06 < 150
+    },
+  },
+  1100: {
+    checkmo: { discount: 110, final: 990, installments: free(990, 495, 330, 247.5, 198, 165) },
+    bank: { discount: 50, final: 1050, installments: [...free(1050, 525, 350), ...priced(4, 275.69, 222.7, 187.39, 162.18)] },
+  },
+  1500: {
+    checkmo: { discount: 150, final: 1350, installments: free(1350, 675, 450, 337.5, 270, 225) },
+    bank: {
+      discount: 50, final: 1450,
+      installments: [...free(1450, 725, 483.33), ...priced(4, 380.71, 307.54, 258.78, 223.96, 197.85, 177.56, 161.34)],
+    },
+  },
+  2000.99: {
+    checkmo: { discount: 200.1, final: 1800.89, installments: free(1800.89, 900.45, 600.3, 450.22, 360.18, 300.15) },
+    bank: {
+      discount: 50, final: 1950.99,
+      installments: [
+        ...free(1950.99, 975.5, 650.33),
+        ...priced(4, 512.25, 413.8, 348.18, 301.34, 266.21, 238.91, 217.08, 199.23, 184.37),
+      ],
+    },
+  },
+  // Bundle with its default selection: every installment is under the R$ 150 minimum, so none is listed.
+  61: {
+    checkmo: { discount: 6.1, final: 54.9, installments: [] },
+    bank: { discount: 50, final: 11, installments: [] },
+  },
+};
 
 /** Open the product page and the payment options modal, and wait for the calculation to be rendered. */
 export async function openModal(page) {
@@ -64,6 +87,7 @@ export async function readRow(page, title) {
     final: final ? parseBRL(final) : null,
     finalText: final,
     installments,
+    lines,
   };
 }
 

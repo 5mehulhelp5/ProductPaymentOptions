@@ -1,26 +1,23 @@
 import { expect, test } from '@playwright/test';
 
-import {
-  BANK_TRANSFER, BRL_FORMAT, CHECKMO, MIN_INSTALLMENT, collectPageErrors, expectedRow, openModal, readRow, shot, shownPrice,
-} from './helpers.js';
+import { BRL_FORMAT, PLANS, collectPageErrors, openModal, readRow, shot, shownPrice } from './helpers.js';
 
 const CHECKMO_TITLE = 'Check / Money order';
 const BANK_TITLE = 'Bank Transfer Payment';
 const modal = (page) => page.locator('.modal-popup._show .modal-inner-wrap');
 
-async function assertRow(page, title, config, price) {
-  const expected = expectedRow(price, config, MIN_INSTALLMENT);
+/** Compare what the modal shows for one payment method with the hand-calculated plan of that price. */
+async function assertRow(page, title, method, price) {
+  const expected = PLANS[price]?.[method];
+  expect(expected, `no hand-calculated plan for price ${price}`).toBeDefined();
   const shown = await readRow(page, title);
 
   expect(shown.final, `${title}: final price (page shows "${shown.finalText}")`).toBe(expected.final);
-  if (expected.hasDiscount) expect(shown.discount, `${title}: discount`).toBe(expected.discount);
+  expect(shown.discount, `${title}: discount`).toBe(expected.discount);
   expect(
-    shown.installments.map(({ n, amount }) => [n, amount]),
-    `${title}: installments`,
-  ).toEqual(expected.installments.map(({ n, amount }) => [n, amount]));
-  expect(shown.installments.filter((i) => i.withInterest).map((i) => i.n)).toEqual(
-    expected.installments.filter((i) => i.withInterest).map((i) => i.n),
-  );
+    shown.installments.map(({ n, amount, withInterest }) => [n, amount, withInterest]),
+    `${title}: installments of R$ ${price}`,
+  ).toEqual(expected.installments);
 }
 
 test.describe('simple product priced R$ 1.234,56', () => {
@@ -53,30 +50,43 @@ test.describe('simple product priced R$ 1.234,56', () => {
   test('percentage discount and final price match the hand calculation', async ({ page }) => {
     await page.goto(URL);
     await openModal(page);
-    await assertRow(page, CHECKMO_TITLE, CHECKMO, 1234.56);
+    await assertRow(page, CHECKMO_TITLE, 'checkmo', 1234.56);
   });
 
-  test('fixed discount, interest-free and compound-interest installments match the hand calculation', async ({ page }) => {
+  test('fixed discount, interest-free installments and Tabela Price installments match the hand calculation', async ({ page }) => {
     await page.goto(URL);
     await openModal(page);
-    await assertRow(page, BANK_TITLE, BANK_TRANSFER, 1234.56);
+    await assertRow(page, BANK_TITLE, 'bank', 1234.56);
 
     const bank = await readRow(page, BANK_TITLE);
     expect(bank.final).toBe(1184.56);
     expect(bank.installments.filter((i) => !i.withInterest).map((i) => i.n)).toEqual([1, 2, 3]);
-    expect(bank.installments.some((i) => i.withInterest)).toBe(true);
+    expect(bank.installments.filter((i) => i.withInterest).map((i) => i.n)).toEqual([4, 5, 6, 7, 8]);
+    expect(bank.installments.find((i) => i.n === 4).amount).toBe(311.02); // not 320.43 (price x (1 + i)^n / n)
     await shot(page, 'ppo-03-installments', page.locator('#paymentOptionsModal li').nth(1));
   });
 
-  test('installments below the minimum installment value are hidden', async ({ page }) => {
+  test('installments below the minimum installment value are hidden: 9x of R$ 145,06 is under R$ 150', async ({ page }) => {
     await page.goto(URL);
     await openModal(page);
 
     const bank = await readRow(page, BANK_TITLE);
-    expect(bank.installments.length).toBeGreaterThan(0);
-    expect(bank.installments.length).toBeLessThan(BANK_TRANSFER.max); // 10x-12x are under R$ 150
-    for (const { n, amount } of bank.installments) expect(amount, `${n}x`).toBeGreaterThanOrEqual(MIN_INSTALLMENT);
-    expect(Math.max(...bank.installments.map((i) => i.n))).toBe(9);
+    expect(bank.installments.map((i) => i.n)).not.toContain(9);
+    expect(bank.installments.map((i) => i.n)).not.toContain(12);
+    expect(Math.max(...bank.installments.map((i) => i.n))).toBe(8);
+    for (const { n, amount } of bank.installments) expect(amount, `${n}x`).toBeGreaterThanOrEqual(150);
+  });
+
+  test('the monthly interest is written with the store decimal separator: 1,99% and not 1.99%', async ({ page }) => {
+    await page.goto(URL);
+    await openModal(page);
+
+    const lines = (await readRow(page, BANK_TITLE)).lines.filter((line) => line.includes('%'));
+    expect(lines.length).toBe(5); // 4x to 8x
+    for (const line of lines) {
+      expect(line).toContain('1,99%');
+      expect(line).not.toContain('1.99%');
+    }
   });
 
   test('amounts use the store price format even though the browser locale is en-US', async ({ page }) => {
@@ -102,8 +112,8 @@ test.describe('configurable product, price follows the chosen size', () => {
       await expect.poll(() => shownPrice(page), { message: `price for size ${size}` }).toBe(price);
 
       await openModal(page);
-      await assertRow(page, CHECKMO_TITLE, CHECKMO, price);
-      await assertRow(page, BANK_TITLE, BANK_TRANSFER, price);
+      await assertRow(page, CHECKMO_TITLE, 'checkmo', price);
+      await assertRow(page, BANK_TITLE, 'bank', price);
       if (size === '33') await shot(page, 'ppo-04-configurable-size-33', modal(page));
       if (size === '36') await shot(page, 'ppo-05-configurable-size-36', modal(page));
       await page.locator('.modal-popup._show .action-close').click();
@@ -126,8 +136,8 @@ test.describe('bundle product (dynamic price)', () => {
     const price = await shownPrice(page);
 
     await openModal(page);
-    await assertRow(page, CHECKMO_TITLE, CHECKMO, price);
-    await assertRow(page, BANK_TITLE, BANK_TRANSFER, price);
+    await assertRow(page, CHECKMO_TITLE, 'checkmo', price);
+    await assertRow(page, BANK_TITLE, 'bank', price);
     await shot(page, 'ppo-06-bundle', modal(page));
     expect(errors).toEqual([]);
   });

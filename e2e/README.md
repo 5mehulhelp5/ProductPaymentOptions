@@ -12,7 +12,7 @@ QA_BASE_URL=http://localhost QA_ADMIN_USER=... QA_ADMIN_PASSWORD=... npx playwri
 Environment variables: `QA_BASE_URL` (default `http://localhost`), `QA_BROWSER` (browser executable),
 `QA_PHASE` (`before` / `after`, only names the screenshot folder), `QA_ADMIN_USER` / `QA_ADMIN_PASSWORD`.
 
-The expected values are computed inside the tests, in cents, from the configuration the store was seeded with
-(10 % discount and 6 interest-free installments for Check / Money order; R$ 50 discount, 3 interest-free and
-compound 1.99 % per month up to 12 installments for Bank Transfer; R$ 150 minimum installment; simple product at
-R$ 1.234,56; configurable sizes at R$ 1.100,00 / 1.234,56 / 1.500,00 / 2.000,99).
+The expected values are fixed in `helpers.js` (`PLANS`), calculated by hand for the configuration the store was seeded with:
+Check / Money order with 10 % off and 6 interest-free installments; Bank Transfer with R$ 50 off, 3 interest-free
+installments and the Tabela Price at 1,99 % per month up to 12x; a R$ 150 minimum installment. Products: a simple one at
+R$ 1.234,56, a configurable one with sizes at R$ 1.100,00 / 1.234,56 / 1.500,00 / 2.000,99 and a dynamic-price bundle.
