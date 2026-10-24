@@ -71,4 +71,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node --test Test/js
+      - run: node --test Test/js/installments.test.mjs

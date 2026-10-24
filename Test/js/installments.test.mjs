@@ -1,4 +1,4 @@
-// Tests of the installment calculation (view/frontend/web/js/installments.js), run with `node --test Test/js`.
+// Tests of the installment calculation (view/frontend/web/js/installments.js), run with `node --test Test/js/installments.test.mjs`.
 // Every expected value below was calculated by hand (exact decimals, half-up rounding to cents), not taken from the code.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

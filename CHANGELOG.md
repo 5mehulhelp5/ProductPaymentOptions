@@ -23,7 +23,7 @@ First tagged release. It modernizes the module that had been running since 2024 
   in 9x R$ 145,06 (it was R$ 157,16, so it is now hidden by a R$ 150 minimum installment). Amounts are rounded only when
   displayed, and the monthly rate is written with the store's decimal separator (`1,99%`, not `1.99%`).
 - The calculation lives in `view/frontend/web/js/installments.js`, a module without dependencies that is covered by
-  tests (`node --test Test/js`).
+  tests (`node --test Test/js/installments.test.mjs`).
 
 - Requires PHP `~8.2.0||~8.3.0` and Magento framework `^103.0.7` (Magento 2.4.7+). All Magento modules the code
   depends on are declared in `composer.json`, and PSR-4 autoloading is configured.
