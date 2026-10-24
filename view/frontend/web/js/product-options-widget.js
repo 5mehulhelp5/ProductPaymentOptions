@@ -1,10 +1,37 @@
+/**
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
+ */
 define([
     'jquery',
+    'Magento_Catalog/js/price-utils',
     'Magento_Ui/js/modal/modal',
     'mage/translate',
     'jquery/ui'
-], function ($, modal) {
+], function ($, priceUtils, modal) {
     'use strict';
+
+    /**
+     * Parse a configured number, treating empty or invalid values as zero.
+     *
+     * @param {String|Number} value
+     * @returns {Number}
+     */
+    function toNumber(value) {
+        const number = parseFloat(value);
+
+        return isNaN(number) ? 0 : number;
+    }
+
+    /**
+     * Round a monetary amount to two decimal places.
+     *
+     * @param {Number} amount
+     * @returns {Number}
+     */
+    function roundMoney(amount) {
+        return Math.round((amount + Number.EPSILON) * 100) / 100;
+    }
 
     /**
      * Widget for managing product payment options
@@ -43,60 +70,14 @@ define([
         },
 
         /**
-         * Observe changes in the final price
+         * Recalculate whenever the price box of the product re-renders (option selection, qty, tier prices)
          * @private
          */
         _observePriceChanges: function () {
             const self = this;
-            const priceBox = $('[data-role="priceBox"]');
 
-            if (priceBox.length) {
-                priceBox.each(function () {
-                    self._startObservingPriceBox($(this));
-                });
-            }
-
-            const observer = new MutationObserver(function (mutations) {
-                mutations.forEach(function (mutation) {
-                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                        $(mutation.addedNodes).each(function () {
-                            const newPriceBoxes = $(this).find('[data-role="priceBox"]');
-                            if (newPriceBoxes.length) {
-                                newPriceBoxes.each(function () {
-                                    self._startObservingPriceBox($(this));
-                                });
-                            }
-                        });
-                    }
-                });
-            });
-
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        },
-
-        /**
-         * Start observing the priceBox element
-         * @param {jQuery} priceBox - The price box element
-         * @private
-         */
-        _startObservingPriceBox: function (priceBox) {
-            const self = this;
-            const observer = new MutationObserver(function (mutations) {
-                mutations.forEach(function (mutation) {
-                    if (mutation.type === 'characterData' || mutation.type === 'childList') {
-                        const newPrice = self._getFinalPrice();
-                        self._onPriceChange(newPrice);
-                    }
-                });
-            });
-
-            observer.observe(priceBox[0], {
-                childList: true,
-                subtree: true,
-                characterData: true
+            this._getPriceBox().on('reloadPrice', function () {
+                self._onPriceChange(self._getFinalPrice());
             });
         },
 
@@ -117,18 +98,23 @@ define([
         _updatePaymentOptions: function () {
             const paymentOptions = this.options.paymentOptions;
             const productPrice = this.options.productPrice;
-            const minInstallmentValue = this.options.minInstallmentValue;
+            const minInstallmentValue = toNumber(this.options.minInstallmentValue);
 
             $('.fineweb-installments').remove();
+
+            // No usable price yet (e.g. bundle before its options are chosen): leave the rows empty
+            if (!isFinite(productPrice)) {
+                return;
+            }
 
             for (const key in paymentOptions) {
                 if (paymentOptions.hasOwnProperty(key)) {
                     const option = paymentOptions[key];
-                    const discountFixed = parseFloat(option.discount_fixed);
-                    const discountPercentage = parseFloat(option.discount_percentage);
+                    const discountFixed = toNumber(option.discount_fixed);
+                    const discountPercentage = toNumber(option.discount_percentage);
                     const maxInstallments = parseInt(option.max_installments, 10);
-                    const noInterestInstallments = parseInt(option.no_interest_installments, 10);
-                    const monthlyInterestRate = parseFloat(option.monthly_interest_rate);
+                    const noInterestInstallments = parseInt(option.no_interest_installments, 10) || 0;
+                    const monthlyInterestRate = toNumber(option.monthly_interest_rate);
                     let content = '<div class="fineweb-installments">';
                     let finalPrice = productPrice;
 
@@ -139,15 +125,12 @@ define([
                         finalPrice -= (productPrice * discountPercentage / 100);
                     }
 
-                    // Ensure finalPrice is not less than zero
-                    finalPrice = Math.max(finalPrice, 0);
-
-                    // Round finalPrice for display purposes
-                    finalPrice = parseFloat(finalPrice.toFixed(1));
+                    // Ensure finalPrice is not less than zero and round it for display purposes
+                    finalPrice = roundMoney(Math.max(finalPrice, 0));
 
                     // Add discount if applicable
                     if (discountFixed > 0 || discountPercentage > 0) {
-                        content += '<p class="fineweb-discount-amount">' + $.mage.__('Discount: ') + this._formatCurrency(productPrice - finalPrice) + '</p>';
+                        content += '<p class="fineweb-discount-amount">' + $.mage.__('Discount: ') + this._formatCurrency(roundMoney(productPrice - finalPrice)) + '</p>';
                     }
 
                     // Final price
@@ -161,15 +144,15 @@ define([
                             if (i <= noInterestInstallments) {
                                 installmentAmount = finalPrice / i;
                             } else {
-                                // Calculate installment with interest
+                                // Calculate installment with compound monthly interest
                                 const interestMultiplier = Math.pow(1 + monthlyInterestRate / 100, i);
                                 installmentAmount = (finalPrice * interestMultiplier) / i;
                             }
 
                             // Round installmentAmount for display purposes
-                            installmentAmount = parseFloat(installmentAmount.toFixed(1));
+                            installmentAmount = roundMoney(installmentAmount);
 
-                            // Check if the installment amount is below the minimum value
+                            // Hide installments below the minimum value
                             if (installmentAmount >= minInstallmentValue) {
                                 content += '<p>' + i + ' x ' + this._formatCurrency(installmentAmount) + (i > noInterestInstallments ? ' (' + $.mage.__('with ') + monthlyInterestRate + '% ' + $.mage.__('interest per month') + ')' : '') + '</p>';
                             }
@@ -188,31 +171,69 @@ define([
         },
 
         /**
-         * Get the current final price
+         * Get the price box of the main product
          * @private
-         * @returns {number}
+         * @returns {jQuery}
          */
-        _getFinalPrice: function () {
-            const finalPriceElement = $('[data-price-type="finalPrice"] .price');
-            const priceText = finalPriceElement.text().replace(/[^\d,.]/g, '').replace(',', '.');
-            return parseFloat(priceText);
+        _getPriceBox: function () {
+            const mainBox = $('.product-info-main [data-role="priceBox"]').first();
+
+            return mainBox.length ? mainBox : $('[data-role="priceBox"]').first();
         },
 
         /**
-         * Format currency
+         * Get the price box widget instance, when it is already initialized
+         * @private
+         * @returns {Object|undefined}
+         */
+        _getPriceBoxWidget: function () {
+            return this._getPriceBox().data('mage-priceBox');
+        },
+
+        /**
+         * Get the current final price (as a number, not parsed from the formatted text)
+         * @private
+         * @returns {number} NaN when the product has no final price yet
+         */
+        _getFinalPrice: function () {
+            const widget = this._getPriceBoxWidget();
+            const prices = widget && widget.cache && widget.cache.displayPrices;
+
+            if (prices && prices.finalPrice) {
+                return Object.values(prices.finalPrice.adjustments || {}).reduce(function (sum, adjustment) {
+                    return sum + adjustment;
+                }, prices.finalPrice.amount);
+            }
+
+            // Price box not initialized yet: fall back to the amount rendered by the server
+            return parseFloat(
+                this._getPriceBox().find('[data-price-type="finalPrice"]').first().attr('data-price-amount')
+            );
+        },
+
+        /**
+         * Format currency using the store's price format
          * @private
          * @param {number} amount - The amount to format
          * @returns {string}
          */
         _formatCurrency: function (amount) {
-            if (typeof amount === 'number') {
-                return new Intl.NumberFormat(undefined, {
-                    style: 'currency',
-                    currency: $('meta[itemprop="priceCurrency"]').attr('content')
-                }).format(amount.toFixed(1));
-            } else {
-                return '';
+            const widget = this._getPriceBoxWidget();
+            const priceFormat = widget && widget.options.priceConfig && widget.options.priceConfig.priceFormat;
+            const currency = $('meta[itemprop="priceCurrency"]').attr('content');
+
+            if (priceFormat) {
+                return priceUtils.formatPriceLocale(amount, priceFormat);
             }
+
+            if (currency) {
+                return new Intl.NumberFormat(document.documentElement.lang || undefined, {
+                    style: 'currency',
+                    currency: currency
+                }).format(amount);
+            }
+
+            return amount.toFixed(2);
         },
 
         /**
@@ -220,7 +241,7 @@ define([
          * @private
          */
         _modalInit: function () {
-            const popup = modal(this.modalOptions, $('#paymentOptionsModal'));
+            modal(this.modalOptions, $('#paymentOptionsModal'));
 
             $('#openPaymentOptionsModal').on('click', function () {
                 $('#paymentOptionsModal').modal('openModal');
