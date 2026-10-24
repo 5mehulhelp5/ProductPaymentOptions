@@ -99,8 +99,29 @@ export async function shownPrice(page) {
   return parseBRL(await price.innerText());
 }
 
+/**
+ * Magento's own Braintree module logs a console.error on every product page of a store where it is not configured. It is
+ * not one of ours, so its errors are left out; any other script error fails the test.
+ */
+const THIRD_PARTY_SCRIPTS = [/\/PayPal_Braintree\//];
+
+/**
+ * Every JavaScript problem of the page: uncaught exceptions, console.error calls, and the warning Magento prints when a
+ * module depends on the whole jquery/ui bundle (it falls back to a slow compatibility layer). Network failures ("Failed to
+ * load resource", for example a sample-data image) are not script errors and are left out.
+ */
 export function collectPageErrors(page) {
   const errors = [];
-  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+  page.on('console', (message) => {
+    const text = message.text();
+    const thirdParty = THIRD_PARTY_SCRIPTS.some((pattern) => pattern.test(message.location().url));
+    if (message.type() === 'error' && !/Failed to load resource/.test(text) && !thirdParty) {
+      errors.push(`console.error: ${text}`);
+    }
+    if (message.type() === 'warning' && /Fallback to JQueryUI Compat/.test(text)) {
+      errors.push(`console.warning: ${text}`);
+    }
+  });
   return errors;
 }

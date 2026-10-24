@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { expect, test } from '@playwright/test';
 
 import { BRL_FORMAT, PLANS, collectPageErrors, openModal, readRow, shot, shownPrice } from './helpers.js';
@@ -166,5 +169,36 @@ test.describe('admin', () => {
     const selected = await rows.locator('select[name$="[payment_method]"]').evaluateAll((selects) => selects.map((s) => s.value));
     expect(selected).toEqual(['checkmo', 'banktransfer']);
     await shot(page, 'ppo-07-admin-configuration', page.locator('#product_payment_options_payment_discount'));
+  });
+});
+
+const PRODUCT_PAGES = {
+  simple: '/joust-duffle-bag.html',
+  configurable: '/apollo-running-short.html',
+  bundle: '/sprite-yoga-companion-kit.html',
+};
+
+test.describe('JavaScript', () => {
+  for (const [type, url] of Object.entries(PRODUCT_PAGES)) {
+    test(`no JavaScript error on the ${type} product page`, async ({ page }) => {
+      const errors = collectPageErrors(page);
+      await page.goto(url, { waitUntil: 'networkidle' });
+      await page.waitForFunction(() => window.require?.defined?.('Fineweb_ProductPaymentOptions/js/product-options-widget'));
+      await openModal(page);
+
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test('the browser gets the JavaScript of this checkout, not a cached or stale copy', async ({ page }) => {
+    const files = ['product-options-widget.js', 'installments.js'];
+    const responses = files.map((file) => page.waitForResponse((response) => response.url().endsWith(`/Fineweb_ProductPaymentOptions/js/${file}`)));
+
+    await page.goto(PRODUCT_PAGES.simple, { waitUntil: 'networkidle' });
+
+    for (const [index, file] of files.entries()) {
+      const served = await (await responses[index]).text();
+      expect(served, file).toBe(readFileSync(resolve(process.cwd(), `view/frontend/web/js/${file}`), 'utf8'));
+    }
   });
 });
