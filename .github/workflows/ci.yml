@@ -62,3 +62,13 @@ jobs:
       - run: composer config -g repositories.magento-mirror composer "$MAGENTO_MIRROR"
       - run: composer update --no-interaction --no-progress --prefer-dist
       - run: vendor/bin/phpunit
+
+  js:
+    name: JavaScript tests (installments)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test Test/js
