@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Fineweb\ProductPaymentOptions\Test\Unit\Model\Config\Source;
 
-use Fineweb\ProductPaymentOptions\Block\ProductPaymentOptions;
+use Fineweb\ProductPaymentOptions\Model\Config;
 use Fineweb\ProductPaymentOptions\Model\Config\Source\PaymentMethods;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
@@ -42,9 +42,9 @@ class PaymentMethodsTest extends TestCase
     private StoreManagerInterface $storeManager;
 
     /**
-     * @var ScopeConfigInterface&MockObject
+     * @var Config&MockObject
      */
-    private ScopeConfigInterface $scopeConfig;
+    private Config $config;
 
     /**
      * @var PaymentMethods
@@ -58,13 +58,13 @@ class PaymentMethodsTest extends TestCase
 
         $this->paymentMethodList = $this->createMock(PaymentMethodListInterface::class);
         $this->storeManager = $this->createMock(StoreManagerInterface::class);
-        $this->scopeConfig = $this->createMock(ScopeConfigInterface::class);
+        $this->config = $this->createMock(Config::class);
 
         $this->source = new PaymentMethods(
             $this->paymentMethodList,
             $request,
             $this->storeManager,
-            $this->scopeConfig,
+            $this->config,
             new Json()
         );
     }
@@ -143,8 +143,8 @@ class PaymentMethodsTest extends TestCase
 
     public function testKeepsSavedMethodsSelectableEvenWhenInactiveInTheScope(): void
     {
-        $this->scopeConfig->method('getValue')
-            ->with(ProductPaymentOptions::XML_PATH_PAYMENTS, ScopeConfigInterface::SCOPE_TYPE_DEFAULT, null)
+        $this->config->method('getPayments')
+            ->with(ScopeConfigInterface::SCOPE_TYPE_DEFAULT, null)
             ->willReturn((string) json_encode([
                 '_1' => ['payment_method' => 'checkmo'],
                 '_2' => ['payment_method' => 'banktransfer'],
@@ -166,9 +166,9 @@ class PaymentMethodsTest extends TestCase
         $this->params = ['website' => '1'];
         $this->givenWebsiteWithDefaultStore('1', 5);
         $this->paymentMethodList->method('getActiveList')->willReturn([]);
-        $this->scopeConfig->expects(self::once())
-            ->method('getValue')
-            ->with(ProductPaymentOptions::XML_PATH_PAYMENTS, ScopeInterface::SCOPE_WEBSITES, '1')
+        $this->config->expects(self::once())
+            ->method('getPayments')
+            ->with(ScopeInterface::SCOPE_WEBSITES, '1')
             ->willReturn('{not json');
 
         self::assertSame([], $this->source->toOptionArray());
