@@ -66,22 +66,22 @@ export const PLANS = {
 /** Open the product page and the payment options modal, and wait for the calculation to be rendered. */
 export async function openModal(page) {
   // The button is server-rendered: wait for the widget to have calculated (and bound its click handler) first.
-  await page.locator('#paymentOptionsModal .fineweb-final-amount').first().waitFor({ state: 'attached' });
-  await page.locator('#openPaymentOptionsModal').click();
-  await expect(page.locator('#paymentOptionsModal .fineweb-final-amount').first()).toBeVisible();
+  await page.locator('[data-role="payment-options-modal"] .fineweb-payment-options__final').first().waitFor({ state: 'attached' });
+  await page.locator('[data-action="open-payment-options"]').click();
+  await expect(page.locator('[data-role="payment-options-modal"] .fineweb-payment-options__final').first()).toBeVisible();
 }
 
 /** Read what the modal shows for one payment method. */
 export async function readRow(page, title) {
-  const row = page.locator('#paymentOptionsModal li', { has: page.locator('.payment-option-title', { hasText: title }) });
+  const row = page.locator('[data-role="payment-option"]', { has: page.locator('.fineweb-payment-options__title', { hasText: title }) });
   const text = async (selector) => (await row.locator(selector).count() ? row.locator(selector).first().innerText() : null);
-  const lines = await row.locator('.fineweb-installments p').allInnerTexts();
+  const lines = await row.locator('.fineweb-payment-options__installment').allInnerTexts();
   const installments = lines
     .map((line) => line.match(/^(\d+) x (R\$\s?[\d.,]+)(.*)$/))
     .filter(Boolean)
     .map(([, n, amount, rest]) => ({ n: Number(n), amount: parseBRL(amount), withInterest: rest.trim().startsWith('(') }));
-  const discount = await text('.fineweb-discount-amount');
-  const final = await text('.fineweb-final-amount');
+  const discount = await text('.fineweb-payment-options__discount');
+  const final = await text('.fineweb-payment-options__final');
   return {
     discount: discount ? parseBRL(discount) : null,
     final: final ? parseBRL(final) : null,

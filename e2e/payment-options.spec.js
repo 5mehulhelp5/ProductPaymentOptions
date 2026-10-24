@@ -27,12 +27,12 @@ test.describe('simple product priced R$ 1.234,56', () => {
     const errors = collectPageErrors(page);
     await page.goto(URL);
 
-    await expect(page.locator('#openPaymentOptionsModal')).toBeVisible();
+    await expect(page.locator('[data-action="open-payment-options"]')).toBeVisible();
     await shot(page, 'ppo-01-product-page-button');
     await openModal(page);
 
-    await expect(page.locator('#paymentOptionsModal .payment-option-title')).toHaveText([CHECKMO_TITLE, BANK_TITLE]);
-    await expect(page.locator('#paymentOptionsModal .payment-option-content')).toHaveText(['10% cash discount', 'R$ 50 off, up to 12x']);
+    await expect(page.locator('[data-role="payment-option"] .fineweb-payment-options__title')).toHaveText([CHECKMO_TITLE, BANK_TITLE]);
+    await expect(page.locator('[data-role="payment-option"] .fineweb-payment-options__note')).toHaveText(['10% cash discount', 'R$ 50 off, up to 12x']);
     await shot(page, 'ppo-02-modal', modal(page));
     expect(errors).toEqual([]);
   });
@@ -63,7 +63,7 @@ test.describe('simple product priced R$ 1.234,56', () => {
     expect(bank.installments.filter((i) => !i.withInterest).map((i) => i.n)).toEqual([1, 2, 3]);
     expect(bank.installments.filter((i) => i.withInterest).map((i) => i.n)).toEqual([4, 5, 6, 7, 8]);
     expect(bank.installments.find((i) => i.n === 4).amount).toBe(311.02); // not 320.43 (price x (1 + i)^n / n)
-    await shot(page, 'ppo-03-installments', page.locator('#paymentOptionsModal li').nth(1));
+    await shot(page, 'ppo-03-installments', page.locator('[data-role="payment-option"]').nth(1));
   });
 
   test('installments below the minimum installment value are hidden: 9x of R$ 145,06 is under R$ 150', async ({ page }) => {
@@ -93,7 +93,7 @@ test.describe('simple product priced R$ 1.234,56', () => {
     await page.goto(URL);
     await openModal(page);
 
-    const amounts = await page.locator('#paymentOptionsModal .fineweb-final-amount').allInnerTexts();
+    const amounts = await page.locator('[data-role="payment-options-modal"] .fineweb-payment-options__final').allInnerTexts();
     for (const text of amounts) expect(text.replace(/^[^R]*/, '')).toMatch(BRL_FORMAT);
   });
 });
@@ -126,7 +126,7 @@ test.describe('bundle product (dynamic price)', () => {
   test('opens, shows no script errors and matches the displayed price once options are chosen', async ({ page }) => {
     const errors = collectPageErrors(page);
     await page.goto('/sprite-yoga-companion-kit.html');
-    await expect(page.locator('#openPaymentOptionsModal')).toBeVisible();
+    await expect(page.locator('[data-action="open-payment-options"]')).toBeVisible();
 
     for (const group of await page.locator('.bundle-options-container .field.option.required').all()) {
       const radio = group.locator('input[type="radio"]').first();
