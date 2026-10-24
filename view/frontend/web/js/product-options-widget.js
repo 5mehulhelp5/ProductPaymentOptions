@@ -9,15 +9,28 @@ define([
     'Fineweb_ProductPaymentOptions/js/installments',
     'mage/translate',
     'jquery/ui'
-], function ($, priceUtils, modal, installments) {
+], function ($, priceUtils, modal, installments, $t) {
     'use strict';
 
     /**
-     * Widget for managing product payment options
+     * Fill the %1, %2... placeholders of a (translated) phrase.
+     *
+     * @param {String} phrase
+     * @param {Array} values
+     * @returns {String}
+     */
+    function format(phrase, values) {
+        return phrase.replace(/%(\d+)/g, function (placeholder, index) {
+            return String(values[index - 1]);
+        });
+    }
+
+    /**
+     * Widget that shows the discount and the installments of each payment method of the product
      */
     $.widget('mage.finewebProductPaymentOptions', {
         options: {
-            paymentOptions: {}, // Payment options object
+            paymentOptions: {}, // Configured rows, by key
             productPrice: 0, // Product price
             minInstallmentValue: 0 // Minimum installment value
         },
@@ -26,7 +39,7 @@ define([
             type: 'popup',
             responsive: true,
             innerScroll: true,
-            title: $.mage.__('Payment Options'),
+            title: $t('Payment Options'),
             buttons: []
         },
 
@@ -34,6 +47,9 @@ define([
          * Widget initialization
          */
         _create: function () {
+            // Taken before the modal widget moves the element out of this widget's element
+            this.$modal = this.element.find('[data-role="payment-options-modal"]');
+
             this._updateProductPrice();
             this._updatePaymentOptions();
             this._observePriceChanges();
@@ -53,11 +69,9 @@ define([
          * @private
          */
         _observePriceChanges: function () {
-            const self = this;
-
             this._getPriceBox().on('reloadPrice', function () {
-                self._onPriceChange(self._getFinalPrice());
-            });
+                this._onPriceChange(this._getFinalPrice());
+            }.bind(this));
         },
 
         /**
@@ -71,46 +85,94 @@ define([
         },
 
         /**
-         * Calculate and update payment options
+         * Calculate and render the plan of every payment option
          * @private
          */
         _updatePaymentOptions: function () {
-            const paymentOptions = this.options.paymentOptions;
             const productPrice = this.options.productPrice;
             const minInstallmentValue = installments.toNumber(this.options.minInstallmentValue);
 
-            $('.fineweb-installments').remove();
+            this.$modal.find('[data-role="payment-option-prices"]').empty();
 
             // No usable price yet (e.g. bundle before its options are chosen): leave the rows empty
             if (!isFinite(productPrice)) {
                 return;
             }
 
-            for (const key in paymentOptions) {
-                if (paymentOptions.hasOwnProperty(key)) {
-                    const plan = installments.calculate(productPrice, paymentOptions[key], minInstallmentValue);
-                    let content = '<div class="fineweb-installments">';
+            this.$modal.find('[data-role="payment-option"]').each(function (index, element) {
+                const $option = $(element);
+                const option = this.options.paymentOptions[$option.attr('data-option-key')];
 
-                    // Amounts are rounded to cents only here, where they are displayed
-                    if (plan.hasDiscount) {
-                        content += '<p class="fineweb-discount-amount">' + $.mage.__('Discount: ') + this._formatCurrency(installments.roundMoney(plan.discount)) + '</p>';
-                    }
-
-                    content += '<p class="fineweb-final-amount">' + $.mage.__('Final Price: ') + this._formatCurrency(installments.roundMoney(plan.final)) + '</p>';
-
-                    if (plan.installments.length) {
-                        content += '<p>' + $.mage.__('Installment Options:') + '</p>';
-                        plan.installments.forEach(function (installment) {
-                            content += '<p>' + installment.count + ' x ' + this._formatCurrency(installments.roundMoney(installment.amount)) + (installment.withInterest ? ' (' + $.mage.__('with ') + this._formatPercent(plan.monthlyRate) + '% ' + $.mage.__('interest per month') + ')' : '') + '</p>';
-                        }, this);
-                    }
-
-                    content += '</div>';
-
-                    // Update the HTML of the corresponding LI
-                    $('#payment-option' + key).find('.price-content').html(content);
+                if (option) {
+                    $option.find('[data-role="payment-option-prices"]').append(
+                        this._renderPlan(installments.calculate(productPrice, option, minInstallmentValue))
+                    );
                 }
+            }.bind(this));
+        },
+
+        /**
+         * Build the plan of one payment option. Amounts are rounded to cents only here, where they are displayed.
+         *
+         * @private
+         * @param {Object} plan - Result of installments.calculate()
+         * @returns {jQuery}
+         */
+        _renderPlan: function (plan) {
+            const $plan = $('<div></div>').addClass('fineweb-payment-options__plan');
+            const money = function (amount) {
+                return this._formatCurrency(installments.roundMoney(amount));
+            }.bind(this);
+
+            if (plan.hasDiscount) {
+                $plan.append(this._renderLine('discount', $t('Discount: %1'), [money(plan.discount)]));
             }
+
+            $plan.append(this._renderLine('final', $t('Final Price: %1'), [money(plan.final)]));
+
+            if (plan.installments.length) {
+                $plan.append(this._renderLine('installments-title', $t('Installment Options:'), []));
+                plan.installments.forEach(function (installment) {
+                    $plan.append(this._renderInstallment(installment, plan.monthlyRate, money));
+                }, this);
+            }
+
+            return $plan;
+        },
+
+        /**
+         * Build one installment line, with the interest only when the installment has it
+         *
+         * @private
+         * @param {Object} installment
+         * @param {Number} monthlyRate
+         * @param {Function} money
+         * @returns {jQuery}
+         */
+        _renderInstallment: function (installment, monthlyRate, money) {
+            const amount = money(installment.amount);
+            const text = installment.withInterest ?
+                format($t('%1 x %2 (with %3% interest per month)'), [
+                    installment.count,
+                    amount,
+                    this._formatPercent(monthlyRate)
+                ]) :
+                format($t('%1 x %2'), [installment.count, amount]);
+
+            return $('<p></p>').addClass('fineweb-payment-options__installment').text(text);
+        },
+
+        /**
+         * Build a text line of the plan
+         *
+         * @private
+         * @param {String} name - BEM element name
+         * @param {String} phrase - Translated phrase with placeholders
+         * @param {Array} values
+         * @returns {jQuery}
+         */
+        _renderLine: function (name, phrase, values) {
+            return $('<p></p>').addClass('fineweb-payment-options__' + name).text(format(phrase, values));
         },
 
         /**
@@ -212,11 +274,11 @@ define([
          * @private
          */
         _modalInit: function () {
-            modal(this.modalOptions, $('#paymentOptionsModal'));
+            modal(this.modalOptions, this.$modal);
 
-            $('#openPaymentOptionsModal').on('click', function () {
-                $('#paymentOptionsModal').modal('openModal');
-            });
+            this.element.find('[data-action="open-payment-options"]').on('click', function () {
+                this.$modal.modal('openModal');
+            }.bind(this));
         }
     });
 

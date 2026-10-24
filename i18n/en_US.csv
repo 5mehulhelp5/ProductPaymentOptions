@@ -7,11 +7,7 @@
 "Payment Method Content to Show","Payment Method Content to Show"
 Add,Add
 "Payment Options","Payment Options"
-"Discount: ","Discount: "
-"Final Price: ","Final Price: "
 "Installment Options:","Installment Options:"
-"with ","with "
-"interest per month","interest per month"
 Fineweb,Fineweb
 "Product Payment Options","Product Payment Options"
 "Payment Options Configuration","Payment Options Configuration"
@@ -20,3 +16,7 @@ Fineweb,Fineweb
 "Installments whose value falls below this amount are hidden from the product page.","Installments whose value falls below this amount are hidden from the product page."
 "One row per payment method. A fixed discount takes precedence over a percentage discount.","One row per payment method. A fixed discount takes precedence over a percentage discount."
 "View Payment Options","View Payment Options"
+"Discount: %1","Discount: %1"
+"Final Price: %1","Final Price: %1"
+"%1 x %2","%1 x %2"
+"%1 x %2 (with %3% interest per month)","%1 x %2 (with %3% interest per month)"
