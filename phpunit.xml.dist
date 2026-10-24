@@ -15,6 +15,7 @@
         <include>
             <directory>Block</directory>
             <directory>Model</directory>
+            <directory>ViewModel</directory>
         </include>
     </source>
 </phpunit>

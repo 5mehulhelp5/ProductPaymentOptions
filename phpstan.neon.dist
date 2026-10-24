@@ -4,5 +4,6 @@ parameters:
     paths:
         - Block
         - Model
+        - ViewModel
         - Test
         - registration.php

@@ -7,9 +7,16 @@
 -->
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
-        <!-- Include payment options block in the main product info container -->
         <referenceContainer name="product.info.main">
-            <block ifconfig="product_payment_options/payment_discount/enabled" class="Fineweb\ProductPaymentOptions\Block\ProductPaymentOptions" after="product.info.price" name="product.payment.options" template="Fineweb_ProductPaymentOptions::product/payment_options.phtml"/>
+            <block name="product.payment.options"
+                   class="Magento\Framework\View\Element\Template"
+                   template="Fineweb_ProductPaymentOptions::product/payment_options.phtml"
+                   after="product.info.price"
+                   ifconfig="product_payment_options/payment_discount/enabled">
+                <arguments>
+                    <argument name="view_model" xsi:type="object">Fineweb\ProductPaymentOptions\ViewModel\PaymentOptions</argument>
+                </arguments>
+            </block>
         </referenceContainer>
     </body>
 </page>

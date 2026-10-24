@@ -6,25 +6,21 @@
 
 declare(strict_types=1);
 
-namespace Fineweb\ProductPaymentOptions\Block;
+namespace Fineweb\ProductPaymentOptions\ViewModel;
 
+use Fineweb\ProductPaymentOptions\Model\Config;
 use InvalidArgumentException;
-use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Serialize\Serializer\JsonHexTag;
-use Magento\Framework\View\Element\Template;
+use Magento\Framework\View\Element\Block\ArgumentInterface;
 use Magento\Payment\Api\PaymentMethodListInterface;
-use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 
 /**
- * Block class for retrieving and formatting product payment options.
+ * Data of the payment options shown on the product page.
  */
-class ProductPaymentOptions extends Template
+class PaymentOptions implements ArgumentInterface
 {
-    public const XML_PATH_PAYMENTS = 'product_payment_options/payment_discount/payments';
-    public const XML_PATH_MIN_INSTALLMENT_VALUE = 'product_payment_options/payment_discount/min_installment_value';
-
     /**
      * Keys every configured row exposes to the template and the widget, with their fallback values.
      */
@@ -39,24 +35,19 @@ class ProductPaymentOptions extends Template
     ];
 
     /**
-     * @param Template\Context $context
-     * @param ScopeConfigInterface $scopeConfig
+     * @param Config $config
      * @param PaymentMethodListInterface $paymentMethodList
      * @param StoreManagerInterface $storeManager
      * @param Json $json
      * @param JsonHexTag $jsonHexTag
-     * @param mixed[] $data
      */
     public function __construct(
-        Template\Context $context,
-        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly Config $config,
         private readonly PaymentMethodListInterface $paymentMethodList,
         private readonly StoreManagerInterface $storeManager,
         private readonly Json $json,
-        private readonly JsonHexTag $jsonHexTag,
-        array $data = []
+        private readonly JsonHexTag $jsonHexTag
     ) {
-        parent::__construct($context, $data);
     }
 
     /**
@@ -66,10 +57,10 @@ class ProductPaymentOptions extends Template
      *
      * @return array<string, array<string, string>>|null
      */
-    public function getProductPaymentOptions(): ?array
+    public function getOptions(): ?array
     {
-        $payments = $this->scopeConfig->getValue(self::XML_PATH_PAYMENTS, ScopeInterface::SCOPE_STORE);
-        if (!is_string($payments) || $payments === '') {
+        $payments = $this->config->getPayments();
+        if ($payments === null) {
             return null;
         }
 
@@ -85,41 +76,41 @@ class ProductPaymentOptions extends Template
         $titles = $this->getActivePaymentMethodTitles();
         $options = [];
         foreach ($rows as $key => $row) {
-            if (!is_array($row)) {
-                continue;
+            $row = is_array($row) ? $row + self::ROW_DEFAULTS : null;
+            if ($row !== null && is_string($row['payment_method']) && isset($titles[$row['payment_method']])) {
+                $row['payment_method'] = $titles[$row['payment_method']];
+                $options[$key] = $row;
             }
-            $row += self::ROW_DEFAULTS;
-            if (!isset($titles[$row['payment_method']])) {
-                continue; // not offered in this store, so a discount for it would mislead the customer
-            }
-            $row['payment_method'] = $titles[$row['payment_method']];
-            $options[$key] = $row;
         }
 
         return $options;
     }
 
     /**
-     * Retrieve the minimum installment value, or null when it is not configured.
+     * Retrieve the minimum installment value (0 when it is not configured).
      *
-     * @return float|null
+     * @return float
      */
-    public function getMinInstallmentValue(): ?float
+    public function getMinInstallmentValue(): float
     {
-        $value = $this->scopeConfig->getValue(self::XML_PATH_MIN_INSTALLMENT_VALUE, ScopeInterface::SCOPE_STORE);
-
-        return is_numeric($value) ? (float) $value : null;
+        return $this->config->getMinInstallmentValue() ?? 0.0;
     }
 
     /**
-     * Serialize data for the `text/x-magento-init` script, safe to print inside a `<script>` tag.
+     * Serialize the widget configuration for the `text/x-magento-init` script, safe inside a `<script>` tag.
      *
-     * @param mixed[] $data
      * @return string
      */
-    public function serializeForScript(array $data): string
+    public function getInitConfig(): string
     {
-        return (string) $this->jsonHexTag->serialize($data);
+        return (string) $this->jsonHexTag->serialize([
+            '[data-role="fineweb-payment-options"]' => [
+                'finewebProductPaymentOptions' => [
+                    'paymentOptions' => $this->getOptions() ?? [],
+                    'minInstallmentValue' => $this->getMinInstallmentValue(),
+                ],
+            ],
+        ]);
     }
 
     /**

@@ -6,30 +6,29 @@
 
 declare(strict_types=1);
 
-namespace Fineweb\ProductPaymentOptions\Test\Unit\Block;
+namespace Fineweb\ProductPaymentOptions\Test\Unit\ViewModel;
 
-use Fineweb\ProductPaymentOptions\Block\ProductPaymentOptions;
-use Magento\Framework\App\Config\ScopeConfigInterface;
+use Fineweb\ProductPaymentOptions\Model\Config;
+use Fineweb\ProductPaymentOptions\ViewModel\PaymentOptions;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Serialize\Serializer\JsonHexTag;
-use Magento\Framework\View\Element\Template\Context;
+use Magento\Framework\View\Element\Block\ArgumentInterface;
 use Magento\Payment\Api\Data\PaymentMethodInterface;
 use Magento\Payment\Api\PaymentMethodListInterface;
 use Magento\Store\Api\Data\StoreInterface;
-use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
-class ProductPaymentOptionsTest extends TestCase
+class PaymentOptionsTest extends TestCase
 {
     private const STORE_ID = 7;
 
     /**
-     * @var ScopeConfigInterface&MockObject
+     * @var Config&MockObject
      */
-    private ScopeConfigInterface $scopeConfig;
+    private Config $config;
 
     /**
      * @var PaymentMethodListInterface&MockObject
@@ -37,26 +36,24 @@ class ProductPaymentOptionsTest extends TestCase
     private PaymentMethodListInterface $paymentMethodList;
 
     /**
-     * @var ProductPaymentOptions
+     * @var PaymentOptions
      */
-    private ProductPaymentOptions $block;
+    private PaymentOptions $viewModel;
 
     protected function setUp(): void
     {
-        $this->scopeConfig = $this->createMock(ScopeConfigInterface::class);
+        $this->config = $this->createMock(Config::class);
         $this->paymentMethodList = $this->createMock(PaymentMethodListInterface::class);
         $store = $this->createMock(StoreInterface::class);
         $store->method('getId')->willReturn(self::STORE_ID);
         $storeManager = $this->createMock(StoreManagerInterface::class);
         $storeManager->method('getStore')->willReturn($store);
-        $json = new Json();
 
-        $this->block = new ProductPaymentOptions(
-            $this->createMock(Context::class),
-            $this->scopeConfig,
+        $this->viewModel = new PaymentOptions(
+            $this->config,
             $this->paymentMethodList,
             $storeManager,
-            $json,
+            new Json(),
             new JsonHexTag()
         );
     }
@@ -76,52 +73,50 @@ class ProductPaymentOptionsTest extends TestCase
     }
 
     /**
-     * @return array<string, array{mixed}>
+     * @param array<string, mixed> $rows
      */
-    public static function emptyConfigProvider(): array
+    private function givenSavedRows(array $rows): void
+    {
+        $this->config->method('getPayments')->willReturn((string) json_encode($rows));
+    }
+
+    public function testIsAViewModel(): void
+    {
+        self::assertInstanceOf(ArgumentInterface::class, $this->viewModel);
+    }
+
+    /**
+     * @return array<string, array{string|null}>
+     */
+    public static function unusablePaymentsProvider(): array
     {
         return [
             'not configured' => [null],
-            'empty string' => [''],
-            'not a string' => [['unexpected']],
             'invalid json' => ['{not json'],
             'scalar json' => ['42'],
         ];
     }
 
-    /**
-     * @param mixed $stored
-     */
-    #[DataProvider('emptyConfigProvider')]
-    public function testReturnsNullWhenPaymentsAreNotUsable(mixed $stored): void
+    #[DataProvider('unusablePaymentsProvider')]
+    public function testReturnsNullWhenThePaymentsAreNotUsable(?string $stored): void
     {
-        $this->scopeConfig->method('getValue')->willReturn($stored);
+        $this->config->method('getPayments')->willReturn($stored);
 
-        self::assertNull($this->block->getProductPaymentOptions());
-    }
-
-    public function testReadsPaymentsFromTheStoreScope(): void
-    {
-        $this->scopeConfig->expects(self::once())
-            ->method('getValue')
-            ->with(ProductPaymentOptions::XML_PATH_PAYMENTS, ScopeInterface::SCOPE_STORE)
-            ->willReturn(null);
-
-        $this->block->getProductPaymentOptions();
+        self::assertNull($this->viewModel->getOptions());
     }
 
     public function testResolvesPaymentMethodCodesToTitles(): void
     {
-        $this->scopeConfig->method('getValue')->willReturn((string) json_encode([
+        $this->givenSavedRows([
             '_1' => ['payment_method' => 'checkmo', 'discount_percentage' => '5', 'max_installments' => '1'],
             '_2' => ['payment_method' => 'banktransfer', 'max_installments' => '6'],
-        ]));
+        ]);
         $this->paymentMethodList->method('getActiveList')->willReturn([
             $this->paymentMethod('checkmo', 'Check / Money order'),
             $this->paymentMethod('banktransfer', 'Bank Transfer Payment'),
         ]);
 
-        $options = $this->block->getProductPaymentOptions();
+        $options = $this->viewModel->getOptions();
 
         self::assertIsArray($options);
         self::assertSame(['_1', '_2'], array_keys($options));
@@ -132,16 +127,16 @@ class ProductPaymentOptionsTest extends TestCase
 
     public function testListsOnlyMethodsActiveInTheCurrentStore(): void
     {
-        $this->scopeConfig->method('getValue')->willReturn((string) json_encode([
+        $this->givenSavedRows([
             '_1' => ['payment_method' => 'checkmo'],
             '_2' => ['payment_method' => 'disabled_method'],
-        ]));
+        ]);
         $this->paymentMethodList->expects(self::once())
             ->method('getActiveList')
             ->with(self::STORE_ID)
             ->willReturn([$this->paymentMethod('checkmo', 'Check / Money order')]);
 
-        $options = $this->block->getProductPaymentOptions();
+        $options = $this->viewModel->getOptions();
 
         self::assertIsArray($options);
         self::assertSame(['_1'], array_keys($options));
@@ -149,12 +144,10 @@ class ProductPaymentOptionsTest extends TestCase
 
     public function testUsesTheCodeAsTitleWhenTheActiveMethodHasNoTitle(): void
     {
-        $this->scopeConfig->method('getValue')->willReturn((string) json_encode([
-            '_1' => ['payment_method' => 'untitled'],
-        ]));
+        $this->givenSavedRows(['_1' => ['payment_method' => 'untitled']]);
         $this->paymentMethodList->method('getActiveList')->willReturn([$this->paymentMethod('untitled', '')]);
 
-        $options = $this->block->getProductPaymentOptions();
+        $options = $this->viewModel->getOptions();
 
         self::assertIsArray($options);
         self::assertSame('untitled', $options['_1']['payment_method']);
@@ -162,71 +155,74 @@ class ProductPaymentOptionsTest extends TestCase
 
     public function testFillsMissingRowKeysSoTheTemplateNeverReadsAnUndefinedIndex(): void
     {
-        $this->scopeConfig->method('getValue')->willReturn((string) json_encode([
-            '_1' => ['payment_method' => 'checkmo'],
-        ]));
+        $this->givenSavedRows(['_1' => ['payment_method' => 'checkmo']]);
         $this->paymentMethodList->method('getActiveList')->willReturn([
             $this->paymentMethod('checkmo', 'Check / Money order'),
         ]);
 
-        $options = $this->block->getProductPaymentOptions();
+        $options = $this->viewModel->getOptions();
 
         self::assertIsArray($options);
         self::assertSame('', $options['_1']['payment_method_content']);
         self::assertSame('', $options['_1']['monthly_interest_rate']);
     }
 
-    public function testSkipsRowsThatAreNotArrays(): void
+    public function testSkipsRowsThatAreNotArraysOrHaveANonStringPaymentMethod(): void
     {
-        $this->scopeConfig->method('getValue')->willReturn((string) json_encode([
+        $this->givenSavedRows([
             '_1' => 'garbage',
-            '_2' => ['payment_method' => 'checkmo'],
-        ]));
+            '_2' => ['payment_method' => ['nested']],
+            '_3' => ['payment_method' => 'checkmo'],
+        ]);
         $this->paymentMethodList->method('getActiveList')->willReturn([
             $this->paymentMethod('checkmo', 'Check / Money order'),
         ]);
 
-        $options = $this->block->getProductPaymentOptions();
+        $options = $this->viewModel->getOptions();
 
         self::assertIsArray($options);
-        self::assertSame(['_2'], array_keys($options));
+        self::assertSame(['_3'], array_keys($options));
     }
 
-    /**
-     * @return array<string, array{mixed, float|null}>
-     */
-    public static function minInstallmentValueProvider(): array
+    public function testMinInstallmentValueIsZeroWhenNotConfigured(): void
     {
-        return [
-            'decimal' => ['12.5', 12.5],
-            'integer' => ['100', 100.0],
-            'zero' => ['0', 0.0],
-            'not configured' => [null, null],
-            'empty string' => ['', null],
-            'not numeric' => ['abc', null],
-        ];
+        $this->config->method('getMinInstallmentValue')->willReturn(null);
+
+        self::assertSame(0.0, $this->viewModel->getMinInstallmentValue());
     }
 
-    /**
-     * @param mixed $stored
-     * @param float|null $expected
-     */
-    #[DataProvider('minInstallmentValueProvider')]
-    public function testMinInstallmentValue(mixed $stored, ?float $expected): void
+    public function testMinInstallmentValueIsTheConfiguredOne(): void
     {
-        $this->scopeConfig->expects(self::once())
-            ->method('getValue')
-            ->with(ProductPaymentOptions::XML_PATH_MIN_INSTALLMENT_VALUE, ScopeInterface::SCOPE_STORE)
-            ->willReturn($stored);
+        $this->config->method('getMinInstallmentValue')->willReturn(150.0);
 
-        self::assertSame($expected, $this->block->getMinInstallmentValue());
+        self::assertSame(150.0, $this->viewModel->getMinInstallmentValue());
     }
 
-    public function testSerializeForScriptCannotCloseTheScriptTag(): void
+    public function testInitConfigTargetsTheWidgetElementAndCarriesTheOptions(): void
     {
-        $serialized = $this->block->serializeForScript(['content' => '</script><script>alert(1)</script>']);
+        $this->givenSavedRows(['_1' => ['payment_method' => 'checkmo', 'max_installments' => '6']]);
+        $this->config->method('getMinInstallmentValue')->willReturn(150.0);
+        $this->paymentMethodList->method('getActiveList')->willReturn([
+            $this->paymentMethod('checkmo', 'Check / Money order'),
+        ]);
 
-        self::assertStringNotContainsString('</script>', $serialized);
-        self::assertStringNotContainsString('<', $serialized);
+        $config = json_decode($this->viewModel->getInitConfig(), true);
+
+        self::assertIsArray($config);
+        $widget = $config['[data-role="fineweb-payment-options"]']['finewebProductPaymentOptions'];
+        self::assertEquals(150, $widget['minInstallmentValue']);
+        self::assertSame('Check / Money order', $widget['paymentOptions']['_1']['payment_method']);
+        self::assertSame('6', $widget['paymentOptions']['_1']['max_installments']);
+    }
+
+    public function testInitConfigCannotCloseTheScriptTag(): void
+    {
+        $this->givenSavedRows(['_1' => ['payment_method' => 'checkmo', 'payment_method_content' => '</script>']]);
+        $this->paymentMethodList->method('getActiveList')->willReturn([
+            $this->paymentMethod('checkmo', 'Check / Money order'),
+        ]);
+
+        self::assertStringNotContainsString('</script>', $this->viewModel->getInitConfig());
+        self::assertStringNotContainsString('<', $this->viewModel->getInitConfig());
     }
 }
