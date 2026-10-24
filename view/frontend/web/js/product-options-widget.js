@@ -8,7 +8,7 @@ define([
     'Magento_Ui/js/modal/modal',
     'Fineweb_ProductPaymentOptions/js/installments',
     'mage/translate',
-    'jquery/ui'
+    'jquery-ui-modules/widget'
 ], function ($, priceUtils, modal, installments, $t) {
     'use strict';
 
