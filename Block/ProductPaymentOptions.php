@@ -62,7 +62,7 @@ class ProductPaymentOptions extends Template
     /**
      * Retrieve the payment option rows of the payment methods active in the current store.
      *
-     * Each payment method code is resolved to its title; rows of methods that are not offered in the store are left out.
+     * Each payment method code is resolved to its title; rows of methods that the store does not offer are left out.
      *
      * @return array<string, array<string, string>>|null
      */
