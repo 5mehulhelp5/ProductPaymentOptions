@@ -1,45 +1,32 @@
 <?php
 /**
- * Fineweb_ProductPaymentOptions extension
- *
- * @package     Fineweb_ProductPaymentOptions
- * @copyright   Copyright © Fineweb, Inc. All rights reserved.
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
  */
 
 declare(strict_types=1);
 
 namespace Fineweb\ProductPaymentOptions\Block\Adminhtml\Form\Field;
 
+use Fineweb\ProductPaymentOptions\Model\Config\Source\PaymentMethods;
 use Magento\Framework\View\Element\Context;
 use Magento\Framework\View\Element\Html\Select;
-use Fineweb\ProductPaymentOptions\Model\Config\Source\PaymentMethods;
 
 /**
- * Class Column
- *  This class represents a custom HTML select element used in admin forms
- *  to display payment method options fetched from the system configuration.
+ * Select element used in the admin field array to pick one of the active payment methods.
  */
 class Column extends Select
 {
-
     /**
-     * @var PaymentMethods
-     */
-    protected PaymentMethods $finewebPaymentOptions;
-
-    /**
-     * Column constructor.
-     *
-     * @param PaymentMethods $finewebPaymentOptions
-     * @param Context        $context
-     * @param array          $data
+     * @param PaymentMethods $paymentMethods
+     * @param Context $context
+     * @param mixed[] $data
      */
     public function __construct(
-        PaymentMethods $finewebPaymentOptions,
+        private readonly PaymentMethods $paymentMethods,
         Context $context,
         array $data = []
     ) {
-        $this->finewebPaymentOptions = $finewebPaymentOptions;
         parent::__construct($context, $data);
     }
 
@@ -47,46 +34,35 @@ class Column extends Select
      * Set input name
      *
      * @param string $value
-     *
      * @return $this
      */
     public function setInputName(string $value): static
     {
-        return $this->setName($value);
+        return $this->setData('name', $value);
     }
 
     /**
      * Set input ID
      *
      * @param string $value
-     *
      * @return $this
      */
     public function setInputId(string $value): static
     {
-        return $this->setId($value);
+        return $this->setData('id', $value);
     }
 
     /**
-     * Render block HTML
+     * Fill the select with the active payment methods when no options were set explicitly
      *
      * @return string
      */
-    public function toHtml(): string
+    protected function _toHtml(): string
     {
         if (!$this->getOptions()) {
-            $this->setOptions($this->getSourceOptions());
+            $this->setOptions($this->paymentMethods->toOptionArray());
         }
-        return parent::toHtml();
-    }
 
-    /**
-     * Get source options
-     *
-     * @return array
-     */
-    private function getSourceOptions(): array
-    {
-        return $this->finewebPaymentOptions->toOptionArray();
+        return parent::_toHtml();
     }
 }

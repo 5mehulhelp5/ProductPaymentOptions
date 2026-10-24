@@ -1,50 +1,43 @@
 <?php
 /**
- * Fineweb_ProductPaymentOptions extension
- *
- * @copyright   Copyright © Fineweb, Inc. (https://fineweb.com.br/)
- * @author      Roni Clei Santos
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
  */
+
+declare(strict_types=1);
 
 namespace Fineweb\ProductPaymentOptions\Model\Config\Source;
 
-use Magento\Framework\Option\ArrayInterface;
+use Magento\Framework\Data\OptionSourceInterface;
 use Magento\Payment\Model\Config as PaymentConfig;
 
 /**
- * Provides payment methods as options for configuration.
+ * Provides the active payment methods as options for configuration fields.
  */
-class PaymentMethods implements ArrayInterface
+class PaymentMethods implements OptionSourceInterface
 {
     /**
-     * @var PaymentConfig
-     */
-    protected $paymentConfig;
-
-    /**
-     * PaymentMethods constructor.
      * @param PaymentConfig $paymentConfig
      */
-    public function __construct(PaymentConfig $paymentConfig)
+    public function __construct(private readonly PaymentConfig $paymentConfig)
     {
-        $this->paymentConfig = $paymentConfig;
     }
 
     /**
-     * Retrieve available payment methods as an array of options.
+     * Retrieve the active payment methods as an array of value/label options.
      *
-     * @return array
+     * @return array<int, array{value: string, label: string}>
      */
     public function toOptionArray(): array
     {
         $options = [];
-        $methods = $this->paymentConfig->getActiveMethods();
-        foreach ($methods as $method) {
+        foreach ($this->paymentConfig->getActiveMethods() as $method) {
             $options[] = [
-                'value' => $method->getCode(),
-                'label' => $method->getTitle(),
+                'value' => (string) $method->getCode(),
+                'label' => (string) $method->getTitle(),
             ];
         }
+
         return $options;
     }
 }
