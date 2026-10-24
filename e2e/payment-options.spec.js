@@ -6,6 +6,7 @@ import {
 
 const CHECKMO_TITLE = 'Check / Money order';
 const BANK_TITLE = 'Bank Transfer Payment';
+const modal = (page) => page.locator('.modal-popup._show .modal-inner-wrap');
 
 async function assertRow(page, title, config, price) {
   const expected = expectedRow(price, config, MIN_INSTALLMENT);
@@ -35,7 +36,7 @@ test.describe('simple product priced R$ 1.234,56', () => {
 
     await expect(page.locator('#paymentOptionsModal .payment-option-title')).toHaveText([CHECKMO_TITLE, BANK_TITLE]);
     await expect(page.locator('#paymentOptionsModal .payment-option-content')).toHaveText(['10% cash discount', 'R$ 50 off, up to 12x']);
-    await shot(page, 'ppo-02-modal');
+    await shot(page, 'ppo-02-modal', modal(page));
     expect(errors).toEqual([]);
   });
 
@@ -64,7 +65,7 @@ test.describe('simple product priced R$ 1.234,56', () => {
     expect(bank.final).toBe(1184.56);
     expect(bank.installments.filter((i) => !i.withInterest).map((i) => i.n)).toEqual([1, 2, 3]);
     expect(bank.installments.some((i) => i.withInterest)).toBe(true);
-    await shot(page, 'ppo-03-installments');
+    await shot(page, 'ppo-03-installments', page.locator('#paymentOptionsModal li').nth(1));
   });
 
   test('installments below the minimum installment value are hidden', async ({ page }) => {
@@ -103,8 +104,8 @@ test.describe('configurable product, price follows the chosen size', () => {
       await openModal(page);
       await assertRow(page, CHECKMO_TITLE, CHECKMO, price);
       await assertRow(page, BANK_TITLE, BANK_TRANSFER, price);
-      if (size === '33') await shot(page, 'ppo-04-configurable-size-33');
-      if (size === '36') await shot(page, 'ppo-05-configurable-size-36');
+      if (size === '33') await shot(page, 'ppo-04-configurable-size-33', modal(page));
+      if (size === '36') await shot(page, 'ppo-05-configurable-size-36', modal(page));
       await page.locator('.modal-popup._show .action-close').click();
     }
     expect(errors).toEqual([]);
@@ -127,7 +128,7 @@ test.describe('bundle product (dynamic price)', () => {
     await openModal(page);
     await assertRow(page, CHECKMO_TITLE, CHECKMO, price);
     await assertRow(page, BANK_TITLE, BANK_TRANSFER, price);
-    await shot(page, 'ppo-06-bundle');
+    await shot(page, 'ppo-06-bundle', modal(page));
     expect(errors).toEqual([]);
   });
 });
@@ -138,6 +139,7 @@ test.describe('admin', () => {
     const password = process.env.QA_ADMIN_PASSWORD;
     test.skip(!user || !password, 'set QA_ADMIN_USER and QA_ADMIN_PASSWORD');
 
+    await page.setViewportSize({ width: 1800, height: 1100 });
     await page.goto('/admin');
     await page.locator('#username').fill(user);
     await page.locator('#login').fill(password);
@@ -153,6 +155,6 @@ test.describe('admin', () => {
     await expect(rows).toHaveCount(2);
     const selected = await rows.locator('select[name$="[payment_method]"]').evaluateAll((selects) => selects.map((s) => s.value));
     expect(selected).toEqual(['checkmo', 'banktransfer']);
-    await shot(page, 'ppo-07-admin-configuration');
+    await shot(page, 'ppo-07-admin-configuration', page.locator('#product_payment_options_payment_discount'));
   });
 });
