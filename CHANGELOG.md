@@ -5,6 +5,34 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-24
+
+Quality release: no change in what the storefront or the admin show (the end-to-end tests pass with the same hand-calculated
+amounts), but the module is now structured, tested and checked the way a Magento 2 module should be.
+
+### Changed
+
+- The block that fed the template is a **ViewModel** (`ArgumentInterface`) passed as a layout argument; the configuration
+  is read by `Model/Config`, and every read passes its scope.
+- The plan in the modal is built with elements and `.text()` instead of concatenated HTML, and every sentence is one
+  translated phrase with placeholders (`%1 x %2 (with %3% interest per month)`) instead of glued pieces. The CSV files
+  carry exactly those phrases.
+- The markup uses `data-role` / `data-action` hooks scoped to the widget element instead of fixed ids, and no inline style.
+- CSS classes are BEM in kebab-case with the `fineweb-` prefix (`fineweb-payment-options__button`); the LESS has at most 3
+  levels and is mobile first.
+
+### Added
+
+- CI jobs: blacklist, `composer validate --strict`, tests exist, multi-store scope, phpcs with warnings blocking, phpmd (Magento
+  rule set), phpstan level 9, PHPUnit with a 70% per-file coverage gate on PHP 8.2 and 8.3, ESLint 10 and the JavaScript tests.
+- Local git hooks (`.githooks`, `setup-dev.sh`), the review guide (`.github/copilot-instructions.md`), a pull request
+  template and `CLAUDE.md`.
+- Unit tests for the new classes and for the admin field array and its dropdown column (39 tests, 100% coverage of every file).
+
+### Fixed
+
+- The Composer package no longer carries the tests, the CI files and the tooling (`export-ignore`).
+
 ## [1.0.0] - 2026-10-24
 
 First tagged release. It modernizes the module that had been running since 2024 for Magento 2.4.7+ and PHP 8.2/8.3.
@@ -54,4 +82,5 @@ First tagged release. It modernizes the module that had been running since 2024 
 
 - The packaged `.zip` archive (and the `.DS_Store` it bundled) that was committed to the repository.
 
+[1.1.0]: https://github.com/roni-clei-santos/ProductPaymentOptions/releases/tag/v1.1.0
 [1.0.0]: https://github.com/roni-clei-santos/ProductPaymentOptions/releases/tag/v1.0.0
