@@ -1,97 +1,134 @@
 <?php
 /**
- * Fineweb_ProductPaymentOptions extension
- *
- * @category    Fineweb
- * @copyright   Copyright © Fineweb, Inc. All rights reserved.
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
  */
+
+declare(strict_types=1);
 
 namespace Fineweb\ProductPaymentOptions\Block;
 
-use Magento\Framework\View\Element\Template;
+use InvalidArgumentException;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Payment\Model\Config;
+use Magento\Framework\Serialize\Serializer\Json;
+use Magento\Framework\Serialize\Serializer\JsonHexTag;
+use Magento\Framework\View\Element\Template;
+use Magento\Payment\Model\Config as PaymentConfig;
+use Magento\Store\Model\ScopeInterface;
 
 /**
  * Block class for retrieving and formatting product payment options.
  */
 class ProductPaymentOptions extends Template
 {
-    /**
-     * @var ScopeConfigInterface
-     */
-    protected ScopeConfigInterface $scopeConfig;
+    public const XML_PATH_PAYMENTS = 'product_payment_options/payment_discount/payments';
+    public const XML_PATH_MIN_INSTALLMENT_VALUE = 'product_payment_options/payment_discount/min_installment_value';
 
     /**
-     * @var Config
+     * Keys every configured row exposes to the template and the widget, with their fallback values.
      */
-    protected Config $paymentConfig;
+    private const ROW_DEFAULTS = [
+        'payment_method' => '',
+        'discount_fixed' => '',
+        'discount_percentage' => '',
+        'max_installments' => '',
+        'no_interest_installments' => '',
+        'monthly_interest_rate' => '',
+        'payment_method_content' => '',
+    ];
 
     /**
-     * ProductPaymentOptions constructor.
      * @param Template\Context $context
      * @param ScopeConfigInterface $scopeConfig
-     * @param Config $paymentConfig
-     * @param array $data
+     * @param PaymentConfig $paymentConfig
+     * @param Json $json
+     * @param JsonHexTag $jsonHexTag
+     * @param mixed[] $data
      */
     public function __construct(
         Template\Context $context,
-        ScopeConfigInterface $scopeConfig,
-        Config $paymentConfig,
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly PaymentConfig $paymentConfig,
+        private readonly Json $json,
+        private readonly JsonHexTag $jsonHexTag,
         array $data = []
     ) {
-        $this->scopeConfig = $scopeConfig;
-        $this->paymentConfig = $paymentConfig;
         parent::__construct($context, $data);
     }
 
     /**
-     * Retrieve product payment options
+     * Retrieve the configured payment option rows, with each payment method code resolved to its title.
      *
-     * @return array|null
+     * @return array<string, array<string, string>>|null
      */
     public function getProductPaymentOptions(): ?array
     {
-        $payments = $this->scopeConfig->getValue('product_payment_options/payment_discount/payments');
+        $payments = $this->scopeConfig->getValue(self::XML_PATH_PAYMENTS, ScopeInterface::SCOPE_STORE);
+        if (!is_string($payments) || $payments === '') {
+            return null;
+        }
 
-        if ($payments !== null) {
-            $paymentMethods = json_decode($payments, true);
-            foreach ($paymentMethods as &$paymentMethod) {
-                $methodCode = $paymentMethod['payment_method'] ?? null;
-                if ($methodCode) {
-                    $methodTitle = $this->getPaymentMethodTitle($methodCode);
-                    if ($methodTitle) {
-                        $paymentMethod['payment_method'] = $methodTitle;
-                    }
-                }
+        try {
+            $rows = $this->json->unserialize($payments);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+        if (!is_array($rows)) {
+            return null;
+        }
+
+        $titles = $this->getActivePaymentMethodTitles();
+        $options = [];
+        foreach ($rows as $key => $row) {
+            if (!is_array($row)) {
+                continue;
             }
-            return $paymentMethods;
+            $row += self::ROW_DEFAULTS;
+            $row['payment_method'] = $titles[$row['payment_method']] ?? $row['payment_method'];
+            $options[$key] = $row;
         }
-        return null;
+
+        return $options;
     }
 
     /**
-     * Get payment method title by code
-     *
-     * @param string $methodCode
-     * @return string|null
-     */
-    protected function getPaymentMethodTitle(string $methodCode): ?string
-    {
-        $methods = $this->paymentConfig->getActiveMethods();
-        if (isset($methods[$methodCode])) {
-            return $methods[$methodCode]->getTitle();
-        }
-        return null;
-    }
-
-    /**
-     * Retrieve minimum installment value
+     * Retrieve the minimum installment value, or null when it is not configured.
      *
      * @return float|null
      */
     public function getMinInstallmentValue(): ?float
     {
-        return $this->scopeConfig->getValue('product_payment_options/payment_discount/min_installment_value');
+        $value = $this->scopeConfig->getValue(self::XML_PATH_MIN_INSTALLMENT_VALUE, ScopeInterface::SCOPE_STORE);
+
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    /**
+     * Serialize data for the `text/x-magento-init` script, safe to print inside a `<script>` tag.
+     *
+     * @param mixed[] $data
+     * @return string
+     */
+    public function serializeForScript(array $data): string
+    {
+        return (string) $this->jsonHexTag->serialize($data);
+    }
+
+    /**
+     * Map active payment method codes to their titles.
+     *
+     * @return array<string, string>
+     */
+    private function getActivePaymentMethodTitles(): array
+    {
+        $titles = [];
+        foreach ($this->paymentConfig->getActiveMethods() as $code => $method) {
+            $title = (string) $method->getTitle();
+            if ($title !== '') {
+                $titles[(string) $code] = $title;
+            }
+        }
+
+        return $titles;
     }
 }
