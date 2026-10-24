@@ -1,62 +1,39 @@
 <?php
 /**
- * Fineweb_ProductPaymentOptions extension
- *
- * @package     Fineweb_ProductPaymentOptions
- * @copyright   Copyright © Fineweb, Inc. All rights reserved.
+ * Copyright © Fineweb. All rights reserved.
+ * See LICENSE for license details.
  */
+
+declare(strict_types=1);
 
 namespace Fineweb\ProductPaymentOptions\Block\Adminhtml\Form\Field;
 
-use Magento\Backend\Block\Template\Context;
 use Magento\Config\Block\System\Config\Form\Field\FieldArray\AbstractFieldArray;
 use Magento\Framework\DataObject;
 use Magento\Framework\Exception\LocalizedException;
 
 /**
- * Class Rows
- *  Adminhtml form field renderer for managing payment options as a dynamic table row.
- *  This class extends Magento's AbstractFieldArray for rendering dynamic rows in backend forms.
+ * Admin field array that manages one row of discount and installment rules per payment method.
  */
 class Rows extends AbstractFieldArray
 {
-    /**
-     * @var string
-     */
-    protected const VALIDATION_CLASS = 'required-entry validate-number';
+    private const VALIDATION_CLASS = 'required-entry validate-number';
 
     /**
-     * @var Column
+     * @var Column|null
      */
-    private Column $paymentRenderer;
-
-    /**
-     * Rows constructor.
-     *
-     * @param Context $context
-     * @param array   $data
-     *
-     * @throws LocalizedException
-     */
-    public function __construct(
-        Context $context,
-        array $data = []
-    ) {
-        parent::__construct($context, $data);
-        $this->paymentRenderer = $this->getLayout()->createBlock(
-            Column::class,
-            '',
-            ['data' => ['is_render_to_js_template' => true]]
-        );
-    }
+    private ?Column $paymentRenderer = null;
 
     /**
      * Prepare rendering the new field by adding all the needed columns
+     *
+     * @return void
+     * @throws LocalizedException
      */
     protected function _prepareToRender(): void
     {
         $this->addColumn('payment_method', [
-            'label'    => __('Payment Method'),
+            'label' => __('Payment Method'),
             'renderer' => $this->getPaymentRenderer(),
         ]);
         $this->addColumn('discount_fixed', [
@@ -84,35 +61,45 @@ class Rows extends AbstractFieldArray
         ]);
 
         $this->_addAfter = false;
-        $this->_addButtonLabel = __('Add');
+        $this->_addButtonLabel = (string) __('Add');
     }
 
     /**
-     * Prepare existing row data object
+     * Pre-select the saved payment method in the row's dropdown
      *
      * @param DataObject $row
-     *
+     * @return void
      * @throws LocalizedException
      */
     protected function _prepareArrayRow(DataObject $row): void
     {
         $options = [];
 
-        $payment = $row->getPayment();
-        if ($payment !== null) {
-            $options['option_' . $this->getPaymentRenderer()->calcOptionHash($payment)] = 'selected="selected"';
+        $paymentMethod = $row->getData('payment_method');
+        if (is_string($paymentMethod)) {
+            $hash = $this->getPaymentRenderer()->calcOptionHash($paymentMethod);
+            $options['option_' . $hash] = 'selected="selected"';
         }
 
         $row->setData('option_extra_attrs', $options);
     }
 
     /**
-     * Get payment renderer block
+     * Get the payment method dropdown renderer
      *
      * @return Column
+     * @throws LocalizedException
      */
     private function getPaymentRenderer(): Column
     {
+        if ($this->paymentRenderer === null) {
+            $this->paymentRenderer = $this->getLayout()->createBlock(
+                Column::class,
+                '',
+                ['data' => ['is_render_to_js_template' => true]]
+            );
+        }
+
         return $this->paymentRenderer;
     }
 }
